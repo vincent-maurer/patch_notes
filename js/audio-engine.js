@@ -635,15 +635,28 @@ function createVCO(type = 'sawtooth') {
     osc.type = type;
     osc.start();
     
+    // Output Buffer & Level Scaling ---
+    const output = audioCtx.createGain();
+    
+    // Scale amplitudes (Reference: +/- 12V system)
+    if (type === 'sine') {
+        output.gain.value = 5.5 / 12.0; // +/- 5.5V
+    } else if (type === 'square') {
+        output.gain.value = 4.5 / 12.0; // +/- 4.5V
+    } else {
+        output.gain.value = 5.0 / 12.0; // Default
+    }
+
+    osc.connect(output);
+    
     const fmGain = audioCtx.createGain();
     fmGain.connect(osc.frequency);
 
-    // 1.0 Unit now equals 5 Octaves (6000 cents)
     const pitchSum = audioCtx.createGain();
     pitchSum.gain.value = 6000;
     pitchSum.connect(osc.detune);
 
-    return { osc, fmGain, pitchSum };
+    return { osc, output, fmGain, pitchSum };
 }
 
 function createVCF() {
@@ -1002,8 +1015,14 @@ function finishBuild() {
     disconnectNode(audioNodes['Stereo_R_Pre']);
     if (audioNodes['Mic_Splitter']) disconnectNode(audioNodes['Mic_Splitter']);
 
-    if (audioNodes['VCO1']) { disconnectNode(audioNodes['VCO1'].osc); disconnectNode(audioNodes['VCO1_Sin'].osc); }
-    if (audioNodes['VCO2']) { disconnectNode(audioNodes['VCO2'].osc); disconnectNode(audioNodes['VCO2_Sin'].osc); }
+    if (audioNodes['VCO1']) { 
+        disconnectNode(audioNodes['VCO1'].output); 
+        disconnectNode(audioNodes['VCO1_Sin'].output); 
+    }
+    if (audioNodes['VCO2']) { 
+        disconnectNode(audioNodes['VCO2'].output); 
+        disconnectNode(audioNodes['VCO2_Sin'].output);
+    }
     if (audioNodes['VCF1']) { disconnectNode(audioNodes['VCF1'].filter); disconnectNode(audioNodes['VCF1'].hpBpOut); }
     if (audioNodes['VCF2']) { disconnectNode(audioNodes['VCF2'].filter); disconnectNode(audioNodes['VCF2'].hpBpOut); }
     if (audioNodes['Slopes1']) disconnectNode(audioNodes['Slopes1'].output);
@@ -1036,11 +1055,15 @@ function finishBuild() {
         'jack-pulse1in': audioNodes['Computer_IO'].pulse1In,
         'jack-pulse2in': audioNodes['Computer_IO'].pulse2In,
 
-        'jack-osc1sqrOut': audioNodes['VCO1'].osc, 'jack-osc1sinOut': audioNodes['VCO1_Sin'].osc,
-        'jack-osc1pitchIn': [audioNodes['VCO1'].pitchSum, audioNodes['VCO1_Sin'].pitchSum], 'jack-osc1fmIn': [audioNodes['VCO1'].fmGain, audioNodes['VCO1_Sin'].fmGain],
-        'jack-osc2sqrOut': audioNodes['VCO2'].osc, 'jack-osc2sinOut': audioNodes['VCO2_Sin'].osc,
-        'jack-osc2pitchIn': [audioNodes['VCO2'].pitchSum, audioNodes['VCO2_Sin'].pitchSum], 'jack-osc2fmIn': [audioNodes['VCO2'].fmGain, audioNodes['VCO2_Sin'].fmGain],
+        'jack-osc1sqrOut': audioNodes['VCO1'].output, 
+        'jack-osc1sinOut': audioNodes['VCO1_Sin'].output,
+        'jack-osc1pitchIn': [audioNodes['VCO1'].pitchSum, audioNodes['VCO1_Sin'].pitchSum], 
+        'jack-osc1fmIn': [audioNodes['VCO1'].fmGain, audioNodes['VCO1_Sin'].fmGain],
+        'jack-osc2sqrOut': audioNodes['VCO2'].output, 
+        'jack-osc2sinOut': audioNodes['VCO2_Sin'].output,
         
+        'jack-osc2pitchIn': [audioNodes['VCO2'].pitchSum, audioNodes['VCO2_Sin'].pitchSum], 
+        'jack-osc2fmIn': [audioNodes['VCO2'].fmGain, audioNodes['VCO2_Sin'].fmGain],
         'jack-filter1In': audioNodes['VCF1'].input,
         'jack-filter1lpOut': audioNodes['VCF1'].filter,
         'jack-filter1hpOut': audioNodes['VCF1'].hpBpOut,
@@ -1080,12 +1103,12 @@ function finishBuild() {
 
     const isConnected = (jackId) => cableData.some(c => c.start === jackId || c.end === jackId);
     
-    if (!isConnected('jack-ring1in')) audioNodes['VCO1_Sin'].osc.connect(audioNodes['RingMod'].inputA);
-    if (!isConnected('jack-ring2in')) audioNodes['VCO2_Sin'].osc.connect(audioNodes['RingMod'].inputB);
-    if (!isConnected('jack-osc1fmIn')) audioNodes['VCO2_Sin'].osc.connect(audioNodes['VCO1'].fmGain);
-    if (!isConnected('jack-osc1fmIn')) audioNodes['VCO2_Sin'].osc.connect(audioNodes['VCO1_Sin'].fmGain);
-    if (!isConnected('jack-osc2fmIn')) audioNodes['VCO1_Sin'].osc.connect(audioNodes['VCO2'].fmGain);
-    if (!isConnected('jack-osc2fmIn')) audioNodes['VCO1_Sin'].osc.connect(audioNodes['VCO2_Sin'].fmGain);
+    if (!isConnected('jack-ring1in')) audioNodes['VCO1_Sin'].output.connect(audioNodes['RingMod'].inputA);
+    if (!isConnected('jack-ring2in')) audioNodes['VCO2_Sin'].output.connect(audioNodes['RingMod'].inputB);
+    if (!isConnected('jack-osc1fmIn')) audioNodes['VCO2_Sin'].output.connect(audioNodes['VCO1'].fmGain);
+    if (!isConnected('jack-osc1fmIn')) audioNodes['VCO2_Sin'].output.connect(audioNodes['VCO1_Sin'].fmGain);
+    if (!isConnected('jack-osc2fmIn')) audioNodes['VCO1_Sin'].output.connect(audioNodes['VCO2'].fmGain);
+    if (!isConnected('jack-osc2fmIn')) audioNodes['VCO1_Sin'].output.connect(audioNodes['VCO2_Sin'].fmGain);
     if (!isConnected('jack-slopes1in')) audioNodes['Silence'].connect(audioNodes['Slopes1'].input);
     if (!isConnected('jack-slopes2in')) audioNodes['Silence'].connect(audioNodes['Slopes2'].input);
     
@@ -1132,11 +1155,10 @@ function finishBuild() {
         'jack-pulse2out': audioNodes['Computer_IO'].pulse2Out,
 
         // Oscillators
-        'jack-osc1sqrOut': audioNodes['VCO1'].osc,
-        'jack-osc1sinOut': audioNodes['VCO1_Sin'].osc,
-        'jack-osc2sqrOut': audioNodes['VCO2'].osc,
-        'jack-osc2sinOut': audioNodes['VCO2_Sin'].osc,
-
+        'jack-osc1sqrOut': audioNodes['VCO1']?.output,
+        'jack-osc1sinOut': audioNodes['VCO1_Sin']?.output, 
+        'jack-osc2sqrOut': audioNodes['VCO2']?.output,
+        'jack-osc2sinOut': audioNodes['VCO2_Sin']?.output,
         // Processors
         'jack-slopes1out': audioNodes['Slopes1'].output,
         'jack-slopes2out': audioNodes['Slopes2'].output,
