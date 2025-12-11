@@ -1691,14 +1691,13 @@ function updateAudioParams() {
         safeParam(mod.fmGain.gain, fmDepth, now);
 
         // 3. Resonance
-        // Worklet expects 0.0 to 1.1 (1.0 = Self Osc)
         const rRaw = getKnobValue(kRes, 0, 1, 'linear');
         const resVal = Math.pow(rRaw, 1.5) * 1.3; 
         safeParam(node.parameters.get('resonance'), resVal, now);
 
         // 4. Update Mode Switch
         const sw = componentStates[swId]?.value || 0;
-        safeParam(node.parameters.get('mode'), sw, now);
+        safeParam(node.parameters.get('mode'), 1 - sw, now);
     };
 
     // --- Correct Calls (Pass IDs, not values) ---
