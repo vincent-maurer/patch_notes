@@ -231,7 +231,7 @@ class HumpbackFilterProcessor extends AudioWorkletProcessor {
             const mode = modeParams.length > 1 ? modeParams[i] : modeParams[0];
 
             let f = 2 * Math.sin(Math.PI * (cutoff / sampleRate));
-            if (f > 0.9) f = 0.9; 
+            if (f > 0.85) f = 0.8; 
 
             // Resonance/Damping
             let q = 2.0 - (res * 2.0);
