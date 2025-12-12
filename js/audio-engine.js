@@ -191,7 +191,7 @@ class SlopesProcessor extends AudioWorkletProcessor {
 registerProcessor('slopes-processor', SlopesProcessor);
 `;
 
-// --- HUMPBACK FILTER WORKLET (OTA SVF Model) ---
+// --- HUMPBACK FILTER WORKLET (2x Oversampled SVF) ---
 const humpbackWorkletCode = `
 class HumpbackFilterProcessor extends AudioWorkletProcessor {
     static get parameterDescriptors() {
@@ -204,8 +204,8 @@ class HumpbackFilterProcessor extends AudioWorkletProcessor {
 
     constructor() {
         super();
-        this.ic1eq = 0;
-        this.ic2eq = 0;
+        this.ic1eq = 0; // Internal State 1 (Band)
+        this.ic2eq = 0; // Internal State 2 (Low)
     }
 
     process(inputs, outputs, parameters) {
@@ -217,49 +217,67 @@ class HumpbackFilterProcessor extends AudioWorkletProcessor {
         const resParams = parameters.resonance;
         const modeParams = parameters.mode;
         
+        // Processing at 2x Sample Rate for stability
         const sampleRate = 48000;
+        const oversampleRate = sampleRate * 2; 
 
+        // We process 128 samples, but run the filter loop 256 times internally
         for (let i = 0; i < (outLP ? outLP.length : 128); i++) {
-            // 1. INPUT + NOISE INJECTION
-            // We add tiny noise (-60dB to -80dB range) to kickstart self-oscillation
-            let inSample = input ? input[i] : 0;
-            // Tiny noise floor to allow pinging from silence
-            inSample += (Math.random() - 0.5) * 0.002; 
-
+            
+            // 1. Get Parameters for this sample
             const cutoff = cutParams.length > 1 ? cutParams[i] : cutParams[0];
             const res = resParams.length > 1 ? resParams[i] : resParams[0];
             const mode = modeParams.length > 1 ? modeParams[i] : modeParams[0];
+            
+            // Input with tiny noise floor to allow self-oscillation start
+            let inSample = input ? input[i] : 0;
+            inSample += (Math.random() - 0.5) * 0.002;
 
-            let f = 2 * Math.sin(Math.PI * (cutoff / sampleRate));
-            if (f > 0.85) f = 0.8; 
+            // 2. Pre-calculate coefficient (f)
+            // Note: We calc f relative to the OVERSAMPLED rate
+            let f = 2 * Math.sin(Math.PI * (cutoff / oversampleRate));
+            // Clamp is now much safer due to higher headroom
+            if (f > 0.9) f = 0.9; 
 
             // Resonance/Damping
-            let q = 2.0 - (res * 2.0);
+            const q = 2.0 - (res * 2.0);
+
+            // 3. OVERSAMPLING LOOP (Run 2x)
+            // We use the same 'inSample' for both substeps (Zero Order Hold)
+            for (let sub = 0; sub < 2; sub++) {
+                const low = this.ic2eq;
+                const band = this.ic1eq;
+
+                // "Humpback" Character: Tanh on feedback provides the OTA saturation
+                const feedback = Math.tanh(band); 
+                
+                // Chamberlin SVF Topology
+                const high = inSample - (feedback * q) - low;
+                const bandNew = band + (f * high);
+                const lowNew = low + (f * bandNew);
+                
+                this.ic1eq = bandNew;
+                this.ic2eq = lowNew;
+            }
+
+            // 4. Output Stage (Decimate back to 1x)
+            // We read the final state after 2 substeps
             
-            const low = this.ic2eq;
-            const band = this.ic1eq;
-            
-            // "Humpback" Character: Tanh on the feedback loop naturally stabilizes amplitude
-            const feedback = Math.tanh(band); 
-            
-            const high = inSample - (feedback * q) - low;
-            
-            const bandNew = band + (f * high);
-            const lowNew = low + (f * bandNew);
-            
-            // Update State (No hard clamping here anymore)
-            this.ic1eq = bandNew;
-            this.ic2eq = lowNew;
+            // Re-calculate HIGH for the output mix based on final states
+            const finalLow = this.ic2eq;
+            const finalBand = this.ic1eq;
+            const finalFeedback = Math.tanh(finalBand);
+            const finalHigh = inSample - (finalFeedback * q) - finalLow;
 
             if (outLP) {
-                outLP[i] = Math.tanh(lowNew);
+                outLP[i] = Math.tanh(finalLow);
             }
 
             if (outSwitched) {
                 let val = 0;
-                if (mode < 0.5) val = high; 
-                else if (mode < 1.5) val = bandNew; 
-                else val = high + lowNew; 
+                if (mode < 0.5) val = finalHigh; 
+                else if (mode < 1.5) val = finalBand; 
+                else val = finalHigh + finalLow; // NOTCH (Summing preserves phase cancellation)
                 
                 outSwitched[i] = Math.tanh(val);
             }
