@@ -2,7 +2,7 @@ class CardCV extends ComputerCard {
     static meta = {
         id: 'cv',
         name: 'Dual CV & LFO',
-        num: '12',
+        num: '102',
         desc: "CV Generator & LFO. \nKnob X: CV 1 Voltage \nKnob Y: CV 2 Voltage \nMain: LFO Rate \nSwitch: LFO Shape \nOut: CV 1, CV 2, Audio L/R (LFO)"
     };
 

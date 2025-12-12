@@ -2,7 +2,7 @@ class CardEuclidean extends ComputerCard {
     static meta = {
         id: 'euclid',
         name: 'Euclidean Circles',
-        num: '42',
+        num: '105',
         desc: "Polyrhythmic Pulse Generator. \nKnob X: Steps (1-16) \nKnob Y: Pulses (Density) \nMain: Clock Speed \nOut: Pulse 1 (Hit), Pulse 2 (Inv), CV 1 (Progress)"
     };
 

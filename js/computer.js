@@ -85,6 +85,8 @@ function cycleNextCard() {
 // 4. UI: CARD SELECTOR
 // =========================================================================
 
+let showOnlyImplemented = true; // Default to showing only working cards
+
 function initCardSelector() {
     if (document.getElementById('cardSelectorModal')) return;
 
@@ -93,8 +95,15 @@ function initCardSelector() {
     modal.innerHTML = `
         <div class="card-modal-content">
             <div class="card-modal-header">
-                <span class="card-modal-title">SELECT PROGRAM CARD</span>
-                <button class="card-modal-close" id="closeCardModal">&times;</button>
+                <span class="card-modal-title">PROGRAM LIBRARY</span>
+                
+                <div class="card-modal-controls">
+                     <label class="toggle-label">
+                        <input type="checkbox" id="cardFilterToggle" ${showOnlyImplemented ? 'checked' : ''}>
+                        <span class="toggle-text">Virtual Cards Only</span>
+                    </label>
+                    <button class="card-modal-close" id="closeCardModal">&times;</button>
+                </div>
             </div>
             <div id="cardGrid" class="card-grid"></div>
         </div>
@@ -102,6 +111,11 @@ function initCardSelector() {
     document.body.appendChild(modal);
 
     document.getElementById('closeCardModal').addEventListener('click', closeCardSelector);
+    document.getElementById('cardFilterToggle').addEventListener('change', (e) => {
+        showOnlyImplemented = e.target.checked;
+        renderCardGrid(); // Re-render when toggled
+    });
+
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeCardSelector();
     });
@@ -112,27 +126,43 @@ function closeCardSelector() {
     if (modal) modal.classList.remove('open');
 }
 
-function openCardSelector() {
-    initCardSelector();
-    const modal = document.getElementById('cardSelectorModal');
+function renderCardGrid() {
     const grid = document.getElementById('cardGrid');
     grid.innerHTML = '';
 
     let currentId = 'none';
     if (activeComputerCard) {
-        // Match by name if instance doesn't have ID, or find by name in registry
         const found = AVAILABLE_CARDS.find(c => c.name === activeComputerCard.name);
         if (found) currentId = found.id;
     }
 
-    AVAILABLE_CARDS.forEach(card => {
+    // Filter Logic
+    const cardsToShow = AVAILABLE_CARDS.filter(card => {
+        if (card.id === 'none') return true; // Always show "No Card"
+        if (showOnlyImplemented) return card.hasImplementation;
+        return true;
+    });
+
+    if (cardsToShow.length === 0) {
+        grid.innerHTML = '<div style="color:#aaa; padding:20px;">No web-audio cards available yet. Uncheck "Audio Cards Only" to see library.</div>';
+        return;
+    }
+
+    cardsToShow.forEach(card => {
         const el = document.createElement('div');
         el.className = 'mini-card';
         if (card.id === currentId) el.classList.add('active-card');
-        el.style.opacity = '1';
+        
+        // Visual distinction for Dummy cards
+        if (!card.hasImplementation && card.id !== 'none') {
+            el.classList.add('dummy-card');
+        }
 
         el.innerHTML = `
-            <div class="mc-num">${card.num}</div>
+            <div class="mc-header">
+                <span class="mc-num">${card.num}</span>
+                ${card.hasImplementation ? '<span class="mc-badge">AUDIO</span>' : ''}
+            </div>
             <div>
                 <div class="mc-label">${card.name}</div>
                 <div class="mc-desc">${card.desc.split('\n')[0]}</div> 
@@ -142,8 +172,12 @@ function openCardSelector() {
         el.onclick = () => selectCardFromMenu(card.id);
         grid.appendChild(el);
     });
+}
 
-    modal.classList.add('open');
+function openCardSelector() {
+    initCardSelector();
+    renderCardGrid();
+    document.getElementById('cardSelectorModal').classList.add('open');
 }
 
 function selectCardFromMenu(cardId) {

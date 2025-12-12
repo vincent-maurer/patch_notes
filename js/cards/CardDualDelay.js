@@ -2,7 +2,7 @@ class CardDualDelay extends ComputerCard {
     static meta = {
         id: 'delay',
         name: 'Dual Delay',
-        num: '07',
+        num: '103',
         desc: "Two separate delay lines. \nIn: Audio L/R, CV 1 (Left Time), CV 2 (Right Time) \nKnob X: Left Time \nKnob Y: Right Time \nMain: Feedback Amount \nOut: Audio L/R"
     };
 

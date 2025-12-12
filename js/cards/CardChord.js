@@ -2,7 +2,7 @@ class CardChord extends ComputerCard {
     static meta = {
         id: 'chord',
         name: 'Chord Organ',
-        num: '24',
+        num: '101',
         desc: "3-Voice Chord Synth. \nIn: CV 1 (Filter Freq) \nKnob X: Root Note \nKnob Y: Chord Shape \nMain: Filter Cutoff \nOut: Audio L/R, CV 1 (Root)"
     };
 

@@ -791,8 +791,9 @@ body.dark-mode .program-card {
     gap: 15px; padding: 20px; overflow-y: auto;
 }
 
+
 .mini-card {
-    aspect-ratio: 9/12;
+    aspect-ratio: 1.3;
     background-color: var(--card-bg); background-image: var(--card-gradient);
     border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
     position: relative; cursor: pointer;
@@ -804,8 +805,72 @@ body.dark-mode .program-card {
 
 /* Text inside Mini Cards */
 .mc-num { font-family: "Courier New", monospace; font-size: 1.2rem; font-weight: bold; color: var(--card-text); text-align: right; }
-.mc-label { color: var(--card-text); text-shadow: none; font-weight: bold; }
+.mc-label { color: #ddd; text-shadow: none; font-weight: bold; }
 .mc-desc { font-size: 0.6rem; color: var(--card-text); margin-top: 5px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* --- Add to your style.css --- */
+
+/* Modal Header Controls */
+.card-modal-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Toggle Switch Style */
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #888;
+}
+.toggle-label input {
+    accent-color: #10b981; /* Green check */
+    width: 16px; 
+    height: 16px;
+}
+.toggle-text {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+/* Mini Card Updates */
+.mc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+}
+
+.mc-badge {
+    font-size: 0.6rem;
+    background: #10b981;
+    color: #000;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-weight: bold;
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
+}
+
+/* Dummy Card Style (Non-functional) */
+.mini-card.dummy-card {
+    opacity: 0.7;
+    border-style: dashed;
+    background-image: none;
+}
+.mini-card.dummy-card:hover {
+    opacity: 1;
+    border-style: solid;
+}
+.mini-card.dummy-card .mc-label {
+    color: #aaa;
+}
+
+
+
 
 /* ==========================================================================
    8. PEDALBOARD

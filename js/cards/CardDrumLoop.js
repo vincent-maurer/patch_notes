@@ -2,7 +2,7 @@ class CardDrumLoop extends ComputerCard {
     static meta = {
         id: 'drums',
         name: 'DrumLoop',
-        num: '25',
+        num: '106',
         desc: "Drum Loop Generator. \nIn: Pulse 1 (Clock) \nKnob X: Select Pattern \nKnob Y: Clock Speed \nOut: Left (Kick), Right (Snare)"
     };
 

@@ -2,7 +2,7 @@ class CardVCA extends ComputerCard {
     static meta = {
         id: 'vca',
         name: 'Dual VCA',
-        num: '24',
+        num: '104',
         desc: "Voltage Controlled Amplifier. \nIn: Audio L/R, CV 1/2 \nKnob X: Left Gain \nKnob Y: Right Gain \nMain: CV Depth \nOut: Audio L/R"
     };
 

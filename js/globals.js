@@ -550,8 +550,11 @@ function getModuleIndexByJack(jackId) {
 // 4. CARD REGISTRY SYSTEM
 // =========================================================================
 
-// Initialize the global registry array
-window.AVAILABLE_CARDS = [];
+// Initialize registry with the full static library
+// If CARD_LIBRARY isn't loaded yet, default to empty array
+window.AVAILABLE_CARDS = (typeof window.CARD_LIBRARY !== 'undefined') 
+    ? JSON.parse(JSON.stringify(window.CARD_LIBRARY)) // Deep copy
+    : [];
 
 // Define the registration function
 window.registerCard = function(cardClass) {
@@ -560,22 +563,32 @@ window.registerCard = function(cardClass) {
         return;
     }
 
-    // Prevent duplicates
-    if (window.AVAILABLE_CARDS.some(c => c.id === cardClass.meta.id)) return;
-
-    // Add to registry
-    window.AVAILABLE_CARDS.push({
-        ...cardClass.meta, // Spread static meta (id, name, num, desc)
-        class: cardClass   // Attach the class constructor
-    });
-
-    // Optional: Sort by number (if 'num' exists) to keep the list tidy
-    window.AVAILABLE_CARDS.sort((a, b) => {
-        if (!a.num) return 1;
-        if (!b.num) return -1;
-        return parseInt(a.num) - parseInt(b.num);
-    });
+    const id = cardClass.meta.id;
     
-    console.log(`Registered Card: ${cardClass.meta.name}`);
-};
+    // Find the existing entry in our library
+    const existingIndex = window.AVAILABLE_CARDS.findIndex(c => c.id === id);
 
+    if (existingIndex !== -1) {
+        // UPGRADE the existing card with the real implementation
+        window.AVAILABLE_CARDS[existingIndex].class = cardClass;
+        window.AVAILABLE_CARDS[existingIndex].hasImplementation = true; // Flag for UI
+        console.log(`[System] Activated Card: ${cardClass.meta.name}`);
+    } else {
+        // If it's a new custom card not in the library, add it
+        window.AVAILABLE_CARDS.push({
+            ...cardClass.meta,
+            class: cardClass,
+            hasImplementation: true
+        });
+        console.log(`[System] Registered Custom Card: ${cardClass.meta.name}`);
+    }
+
+    // Sort by number, handling non-numeric cards at the end
+    window.AVAILABLE_CARDS.sort((a, b) => {
+        const nA = parseInt(a.num);
+        const nB = parseInt(b.num);
+        if (isNaN(nA)) return 1;
+        if (isNaN(nB)) return -1;
+        return nA - nB;
+    });
+};
