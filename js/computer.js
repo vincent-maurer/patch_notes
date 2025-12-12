@@ -1,6 +1,3 @@
-// --- computercard.js ---
-
-
 // =========================================================================
 // 3. CARD REGISTRY & STATE MANAGEMENT
 // =========================================================================
@@ -9,9 +6,12 @@
 // by the individual card files as they load.
 
 function swapComputerCard(typeIdOrName) {
-    // Ensure we have at least a blank card if nothing is loaded
-    if (AVAILABLE_CARDS.length === 0) {
-        console.warn("No cards registered!");
+    // 0. Safety Check for Empty Library
+    if (!window.AVAILABLE_CARDS || window.AVAILABLE_CARDS.length === 0) {
+        console.warn("Card Library is empty. Cannot swap.");
+        // Ensure UI reflects "No Card" if we somehow got here
+        const labelEl = document.getElementById('activeCardLabel');
+        if (labelEl) labelEl.textContent = "No Card";
         return;
     }
 
@@ -21,9 +21,12 @@ function swapComputerCard(typeIdOrName) {
     // Fallback logic
     if (!cardDef) {
         if (typeIdOrName === 'none') cardDef = AVAILABLE_CARDS.find(c => c.id === 'none');
-        // Default to the first available real card if 'reverb' is missing
+        // Default to the first available real card if requested one is missing
         else cardDef = AVAILABLE_CARDS.find(c => c.id === 'reverb') || AVAILABLE_CARDS[0];
     }
+
+    // Double check we actually found something (edge case: library only has 1 broken item)
+    if (!cardDef) return;
 
     // 2. Unmount Old
     if (activeComputerCard) {
@@ -32,11 +35,22 @@ function swapComputerCard(typeIdOrName) {
     }
 
     // 3. Mount New
-    if (cardDef && cardDef.class && audioCtx && audioNodes['Computer_IO']) {
-        activeComputerCard = new cardDef.class(audioCtx, audioNodes['Computer_IO']);
-        activeComputerCard.mount();
+    // FIX: Added 'typeof cardDef.class === "function"' to prevent trying to instantiate strings/objects
+    if (cardDef && typeof cardDef.class === 'function' && audioCtx && audioNodes['Computer_IO']) {
+        try {
+            activeComputerCard = new cardDef.class(audioCtx, audioNodes['Computer_IO']);
+            activeComputerCard.mount();
+        } catch (err) {
+            console.error(`Failed to mount card ${cardDef.name}:`, err);
+            // Fallback to dummy if instantiation crashes
+            activeComputerCard = {
+                name: cardDef.name,
+                fake: true,
+                update: () => {}
+            };
+        }
     } else {
-        // Dummy placeholder if loading fails
+        // Dummy placeholder if loading fails or it's a "virtual" card with no audio class yet
         activeComputerCard = {
             name: cardDef ? cardDef.name : "Error",
             fake: true,
@@ -71,10 +85,14 @@ function swapComputerCard(typeIdOrName) {
 }
 
 function cycleNextCard() {
+    if (!window.AVAILABLE_CARDS || window.AVAILABLE_CARDS.length === 0) return;
+
     const labelEl = document.getElementById('activeCardLabel');
     const currentName = labelEl ? labelEl.textContent : 'No Card';
 
     let currentIdx = AVAILABLE_CARDS.findIndex(c => c.name === currentName);
+    
+    // If current card isn't found (or is "No Card"), start from -1 so next is 0
     if (currentIdx === -1) currentIdx = AVAILABLE_CARDS.length - 1;
 
     const nextIdx = (currentIdx + 1) % AVAILABLE_CARDS.length;
@@ -110,12 +128,21 @@ function initCardSelector() {
     `;
     document.body.appendChild(modal);
 
-    document.getElementById('closeCardModal').addEventListener('click', closeCardSelector);
-    document.getElementById('cardFilterToggle').addEventListener('change', (e) => {
-        showOnlyImplemented = e.target.checked;
-        renderCardGrid(); // Re-render when toggled
+    // Close Button
+    const closeBtn = document.getElementById('closeCardModal');
+    closeBtn.addEventListener('click', closeCardSelector);
+    closeBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        closeCardSelector();
     });
 
+    // Toggle Checkbox
+    document.getElementById('cardFilterToggle').addEventListener('change', (e) => {
+        showOnlyImplemented = e.target.checked;
+        renderCardGrid(); 
+    });
+
+    // Backdrop Click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeCardSelector();
     });
@@ -129,6 +156,11 @@ function closeCardSelector() {
 function renderCardGrid() {
     const grid = document.getElementById('cardGrid');
     grid.innerHTML = '';
+
+    if (!window.AVAILABLE_CARDS || window.AVAILABLE_CARDS.length === 0) {
+        grid.innerHTML = '<div style="color:#aaa; padding:20px; text-align:center;">Library is empty.</div>';
+        return;
+    }
 
     let currentId = 'none';
     if (activeComputerCard) {
@@ -144,7 +176,7 @@ function renderCardGrid() {
     });
 
     if (cardsToShow.length === 0) {
-        grid.innerHTML = '<div style="color:#aaa; padding:20px;">No web-audio cards available yet. Uncheck "Audio Cards Only" to see library.</div>';
+        grid.innerHTML = '<div style="color:#aaa; padding:20px;">No web-audio cards available yet. Uncheck "Virtual Cards Only" to see full library.</div>';
         return;
     }
 
@@ -165,11 +197,20 @@ function renderCardGrid() {
             </div>
             <div>
                 <div class="mc-label">${card.name}</div>
-                <div class="mc-desc">${card.desc.split('\n')[0]}</div> 
+                <div class="mc-desc">${card.desc ? card.desc.split('\n')[0] : ''}</div> 
             </div>
         `;
 
-        el.onclick = () => selectCardFromMenu(card.id);
+        // Handle both Click and Touch for selection
+        const selectAction = (e) => {
+            e.preventDefault(); 
+            e.stopPropagation();
+            selectCardFromMenu(card.id);
+        };
+
+        el.addEventListener('click', selectAction);
+        el.addEventListener('touchend', selectAction);
+
         grid.appendChild(el);
     });
 }
@@ -192,7 +233,8 @@ function selectCardFromMenu(cardId) {
             slot.classList.add('eject');
             
             const cardEl = slot.querySelector('.program-card');
-            cardEl.style.opacity = '1';
+            if(cardEl) cardEl.style.opacity = '1';
+            
             setTimeout(() => slot.classList.remove('eject'), 150);
         }, 150);
     } else {
@@ -228,13 +270,14 @@ function renderCardSlot() {
     let targetId = 'none';
 
     if (activeComputerCard) {
-        const found = AVAILABLE_CARDS.find(c => c.name === activeComputerCard.name);
+        // Try to find the active card in the library
+        const found = (window.AVAILABLE_CARDS || []).find(c => c.name === activeComputerCard.name);
         if (found) targetId = found.id;
     } else if (typeof history !== 'undefined' && history[historyIndex] && history[historyIndex].activeCardId) {
         targetId = history[historyIndex].activeCardId;
     }
 
-    const def = AVAILABLE_CARDS.find(c => c.id === targetId);
+    const def = (window.AVAILABLE_CARDS || []).find(c => c.id === targetId);
     if (def) {
         labelText = def.name;
         numText = def.num;
@@ -266,12 +309,16 @@ function renderCardSlot() {
     tooltip.textContent = descText;
     slot.appendChild(tooltip);
 
-    // Left Click: Cycle
-    const handleSwap = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
+    // --- INTERACTION LOGIC ---
 
-        if (e.button !== 0) return;
+    const handleSwap = (e) => {
+        // Prevent default browser zooming/scrolling if on touch
+        if(e.cancelable) e.preventDefault();
+        e.stopPropagation();
+
+        // On Mouse, only allow Left Click (button 0).
+        // On Touch, 'button' property might not exist or be 0, so we skip check.
+        if (e.type === 'mousedown' && e.button !== 0) return;
 
         slot.classList.add('insert');
         setTimeout(() => {
@@ -280,19 +327,17 @@ function renderCardSlot() {
             slot.classList.add('eject');
 
             const cardEl = slot.querySelector('.program-card');
-            cardEl.style.opacity = '1';
+            if(cardEl) cardEl.style.opacity = '1';
 
             setTimeout(() => slot.classList.remove('eject'), 150);
         }, 150);
     };
 
+    // Add listeners for both Mouse and Touch
     slot.addEventListener('mousedown', handleSwap);
-    slot.addEventListener('touchstart', (e) => {
-        e.stopPropagation(); e.preventDefault();
-        handleSwap({ button: 0, stopPropagation: () => {}, preventDefault: () => {} });
-    });
+    slot.addEventListener('touchstart', handleSwap, { passive: false });
 
-    // Right Click: Menu
+    // Right Click (Long Press on Mobile handled by UI.js long-press utility usually)
     slot.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
