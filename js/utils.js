@@ -4,32 +4,6 @@
 // =========================================================================
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* =========================================================================
    COLOR & UI UTILITIES
    ========================================================================= */
@@ -177,7 +151,50 @@ function findNearestJack(x, y) {
     return nearestId;
 }
 
+/* =========================================================================
+   SVG MATH UTILITIES (Corrected)
+   ========================================================================= */
 
+function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+    const safeAngle = isNaN(angleInDegrees) ? -150 : angleInDegrees;
+    const angleInRadians = (safeAngle - 90) * Math.PI / 180.0;
+    return {
+        x: centerX + (radius * Math.cos(angleInRadians)),
+        y: centerY + (radius * Math.sin(angleInRadians))
+    };
+}
+
+function describeArc(x, y, outerRadius, innerRadius, startAngle, endAngle) {
+    // Calculate points for the "Bracket" shape
+    // Start = Min Angle, End = Max Angle
+    const startOuter = polarToCartesian(x, y, outerRadius, startAngle);
+    const endOuter = polarToCartesian(x, y, outerRadius, endAngle);
+    
+    // The "corners" point inwards
+    const startInner = polarToCartesian(x, y, innerRadius, startAngle);
+    const endInner = polarToCartesian(x, y, innerRadius, endAngle);
+
+    let diff = endAngle - startAngle;
+    if (diff < 0) diff += 360;
+    
+    const largeArcFlag = diff <= 180 ? "0" : "1";
+
+    // Path Logic:
+    // 1. Move to Min Inner (Corner Tip)
+    // 2. Line to Min Outer (Corner Edge)
+    // 3. Arc to Max Outer
+    // 4. Line to Max Inner (Corner Tip)
+    // 5. NO CLOSING (Open path)
+    
+    const d = [
+        "M", startInner.x, startInner.y,
+        "L", startOuter.x, startOuter.y,
+        "A", outerRadius, outerRadius, 0, largeArcFlag, 1, endOuter.x, endOuter.y,
+        "L", endInner.x, endInner.y
+    ].join(" ");
+
+    return d;
+}
 /* =========================================================================
    AUDIO & MATH UTILITIES
    ========================================================================= */
@@ -586,15 +603,26 @@ function optimizeState(raw) {
     const minComponents = {};
     if (raw.componentStates) {
         for (const [longKey, data] of Object.entries(raw.componentStates)) {
-            // Only save if the user has actually touched/moved the control
-            if (!data.isTouched) continue;
+            // Save if touched OR if a custom range is set
+            if (!data.isTouched && !data.range) continue;
 
-            // We only need the value (v). 
-            // We know it is touched because it's in this list, so we drop the 't' flag.
-            minComponents[getShortId(longKey)] = Math.round(data.value * 1000);
+            // Short ID key
+            const k = getShortId(longKey);
+            
+            // Value is always saved as integer (x1000)
+            const val = Math.round(data.value * 1000);
+
+            // If we have a range, save as array: [value, min, max]
+            if (data.range) {
+                minComponents[k] = [val, data.range[0], data.range[1]];
+            } else {
+                // Otherwise just save the value (legacy format compatible)
+                minComponents[k] = val;
+            }
         }
     }
 
+    // ... (rest of the function remains the same) ...
     const minCables = (raw.cables || []).map(c => ({
         s: getShortId(c.start),
         e: getShortId(c.end),
@@ -604,13 +632,7 @@ function optimizeState(raw) {
     }));
 
     const minNotes = (raw.notes || []).map(n => ({
-        x: n.x,
-        y: n.y,
-        t: n.text,
-        c: n.color,
-        b: n.backgroundColor,
-        br: n.border,
-        ts: n.textShadow
+        x: n.x, y: n.y, t: n.text, c: n.color, b: n.backgroundColor, br: n.border, ts: n.textShadow
     }));
 
     return {
@@ -628,40 +650,39 @@ function expandOptimizedState(min) {
     if (min.cs) {
         for (const [shortKey, rawVal] of Object.entries(min.cs)) {
             const longKey = getLongId(shortKey);
+            let value, range = null;
 
-            // Check for legacy format (object with .v) vs new format (direct number)
-            let value;
-            if (typeof rawVal === 'object' && rawVal !== null) {
+            // Check if it's an array [value, min, max] (New Format)
+            if (Array.isArray(rawVal)) {
+                value = rawVal[0] / 1000;
+                range = [rawVal[1], rawVal[2]];
+            } 
+            // Check for legacy object format { v: 123 }
+            else if (typeof rawVal === 'object' && rawVal !== null && rawVal.v !== undefined) {
                 value = rawVal.v / 1000;
-            } else {
+            } 
+            // Standard number format
+            else {
                 value = rawVal / 1000;
             }
 
             components[longKey] = {
                 type: SYSTEM_CONFIG[longKey]?.type || 'knob',
                 value: value,
-                isTouched: true // If it exists in the save file, it is touched
+                isTouched: true,
+                range: range // Restore the range
             };
         }
     }
 
+    // ... (rest of the function remains the same) ...
     const cables = (min.c || []).map(c => ({
-        start: getLongId(c.s),
-        end: getLongId(c.e),
-        color: c.c,
-        droopOffset: c.d,
-        label: c.l
+        start: getLongId(c.s), end: getLongId(c.e), color: c.c, droopOffset: c.d, label: c.l
     }));
 
     const notes = (min.nt || []).map(n => ({
         id: 'note-' + Math.random().toString(36).substr(2, 9),
-        x: n.x,
-        y: n.y,
-        text: n.t,
-        color: n.c,
-        backgroundColor: n.b,
-        border: n.br,
-        textShadow: n.ts
+        x: n.x, y: n.y, text: n.t, color: n.c, backgroundColor: n.b, border: n.br, textShadow: n.ts
     }));
 
     return {
@@ -819,6 +840,7 @@ function injectPrintStyles() {
     document.head.appendChild(style);
 }
 
+// Global exports
 window.getRandomColor = getRandomColor;
 window.getActiveCableColor = getActiveCableColor;
 window.safeParam = safeParam;
@@ -828,12 +850,6 @@ window.createWaveFromFunction = createWaveFromFunction;
 window.generateReverbImpulse = generateReverbImpulse;
 window.getPos = getPos;
 window.findNearestJack = findNearestJack;
-window.safeParam = safeParam;
-window.lerp = lerp;
-window.createDistortionCurve = createDistortionCurve;
-window.createWaveFromFunction = createWaveFromFunction;
-window.generateReverbImpulse = generateReverbImpulse;
-window.getPos = getPos;
-window.findNearestJack = findNearestJack;
 window.updateInterfaceScaling = updateInterfaceScaling;
 window.showMessage = showMessage;
+// Only ONE instance of exports

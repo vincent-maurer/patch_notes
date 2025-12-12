@@ -480,6 +480,75 @@ textarea#globalNotesArea {
 .is-touched { opacity: 1.0 !important; }
 .knob-large:hover, .knob-medium:hover, .knob-small:hover { opacity: 0.9 !important; }
 
+/* ==========================================================================
+   KNOB RANGES (Cake Piece)
+   ========================================================================== */
+
+/* Container for the SVG overlay, positioned behind the knob image */
+.knob-range-overlay {
+    position: absolute;
+    top: -15%;
+    left: -15%;
+    width: 130%;
+    height: 130%;
+    pointer-events: none; /* Let clicks pass through to the knob */
+    z-index: 0; /* Behind the knob image (which is z-index 20) */
+    overflow: visible;
+}
+
+/* The arc path */
+.knob-range-path {
+    fill: none;
+    
+    stroke: rgba(35, 35, 35, 0.5);
+
+    vector-effect: non-scaling-stroke;
+    stroke-width: 3px; 
+    
+    stroke-dasharray: 0 5; 
+    
+    stroke-linecap: round; 
+    stroke-linejoin: round; 
+    
+    transition: none; 
+}
+body.dark-mode .knob-range-path {
+    stroke: rgba(251, 191, 36, 0.5);
+}
+
+/* Edit Mode Handles */
+/* Range Edit Handles - Must be TOPMOST */
+.range-edit-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background-color: #fff;
+    border: 2px solid #666;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 5000 !important; 
+    
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    pointer-events: auto !important; /* Force clicks */
+}
+
+/* When editing, disable pointer events on the knob image so it can't block clicks */
+.range-edit-active .knob-img {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+}
+
+.range-edit-handle.min-handle { background-color: #ffffff; }
+.range-edit-handle.max-handle { background-color: #ffffff; } 
+
+.range-edit-active .knob-img {
+    opacity: 0.5 !important; /* Dim knob while editing */
+}
+
+
+
+
 .switch-2way, .switch-3way {
     width: 1.2%; height: 0;
     background: transparent; border: none; border-radius: 2px;
@@ -508,7 +577,7 @@ textarea#globalNotesArea {
 .switch-3way[data-state="2"] .switch-handle { top: 80%; }
 
 .button {
-    width: 4.2%; padding-bottom: 4.1%; height: 0;
+    width: 4.25%; padding-bottom: 4.25%; height: 0;
     background: rgba(0, 0, 0, 0.05);
     border-radius: 50%;
     transition: all 0.1s ease;

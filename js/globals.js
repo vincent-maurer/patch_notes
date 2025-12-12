@@ -8,40 +8,42 @@
 
 const SYSTEM_CONFIG = {
     // --- KNOBS ---
-    "knob-small-x": { type: "knob-small", x: "3.25%", y: "32.53%", label: "X", short: "KX", defValue: 0 },
-    "knob-large-computer": { type: "knob-large", x: "9.44%", y: "15.15%", label: "Main", short: "KC", defValue: 0 },
-    "knob-small-y": { type: "knob-small", x: "9.58%", y: "32.40%", label: "Y", short: "KY", defValue: 0 },
+    "knob-small-x": { type: "knob-small", x: "3.25%", y: "32.50%", label: "X", short: "KX", defValue: 0 },
+    "knob-large-computer": { type: "knob-large", x: "9.44%", y: "15.28%", label: "Main", short: "KC", defValue: 0 },
+    "knob-small-y": { type: "knob-small", x: "9.50%", y: "32.50%", label: "Y", short: "KY", defValue: 0 },
     
-    "knob-small-osc1fine": { type: "knob-small", x: "22.61%", y: "32.51%", label: "Osc 1 - Fine", short: "KF1" },
-    "knob-large-osc1": { type: "knob-large", x: "28.67%", y: "15.08%", label: "Osc 1 - Freq", short: "KO1" },
+    "knob-small-osc1fine": { type: "knob-small", x: "22.64%", y: "32.50%", label: "Osc 1 - Fine", short: "KF1" },
+    "knob-large-osc1": { type: "knob-large", x: "28.55%", y: "15.28%", label: "Osc 1 - Freq", short: "KO1" },
     "knob-small-osc1fm": { type: "knob-small", x: "34.14%", y: "32.65%", label: "Osc 1 - FM", short: "KFM1", defValue: -150 },
     
-    "knob-small-osc2fine": { type: "knob-small", x: "22.70%", y: "70.66%", label: "Osc 2 - Fine", short: "KF2" },
-    "knob-large-osc2": { type: "knob-large", x: "28.46%", y: "87.71%", label: "Osc 2 - Freq", short: "KO2" },
-    "knob-small-osc2fm": { type: "knob-small", x: "34.20%", y: "70.56%", label: "Osc 2 - FM", short: "KFM2", defValue: -150 },
-    
-    "knob-medium-amp": { type: "knob-medium", x: "51.35%", y: "16.82%", label: "Amp - Gain/Drive", short: "KMA", defValue: -150 }, 
-    "knob-small-stompBlend": { type: "knob-small", x: "44.53%", y: "67.50%", label: "Stomp - Blend", short: "KSB", defValue: 0 },
-    "knob-small-voltagesBlend": { type: "knob-small", x: "52.26%", y: "67.50%", label: "Blend", short: "KVB" },
-    
-    "knob-medium-slopes1": { type: "knob-medium", x: "78.87%", y: "13.12%", label: "Slopes 1 - Time", short: "KMS1" }, 
+    "knob-small-osc2fine": { type: "knob-small", x: "22.64%", y: "70.45%", label: "Osc 2 - Fine", short: "KF2" },
+    "knob-large-osc2": { type: "knob-large", x: "28.40%", y: "87.75%", label: "Osc 2 - Freq", short: "KO2" },
+    "knob-small-osc2fm": { type: "knob-small", x: "34.14%", y: "70.45%", label: "Osc 2 - FM", short: "KFM2", defValue: -150 },
+
+    "knob-medium-slopes1": { type: "knob-medium", x: "78.87%", y: "13.20%", label: "Slopes 1 - Time", short: "KMS1" }, 
     "knob-medium-slopes2": { type: "knob-medium", x: "78.74%", y: "89.30%", label: "Slopes 2 - Time", short: "KMS2" }, 
     
-    "knob-small-filter1fm": { type: "knob-small", x: "60.12%", y: "32.53%", label: "Filter 1 - FM", short: "KFF1", defValue: -150 },
-    "knob-large-filter1": { type: "knob-large", x: "66.37%", y: "15.34%", label: "Filter 1 - Cutoff", short: "KLF1", defValue: -150 },
-    "knob-small-filter1res": { type: "knob-small", x: "72.55%", y: "32.53%", label: "Filter 1 - Res", short: "KFR1", defValue: -150 },
-    "knob-small-filter2fm": { type: "knob-small", x: "60.12%", y: "70.43%", label: "Filter 2 - FM", short: "KFF2", defValue: -150 },
-    "knob-large-filter2": { type: "knob-large", x: "66.34%", y: "87.69%", label: "Filter 2 - Cutoff", short: "KLF2", defValue: -150 },
-    "knob-small-filter2res": { type: "knob-small", x: "72.52%", y: "70.35%", label: "Filter 2 - Res", short: "KFR2", defValue: -150 },
+    "knob-small-filter1fm": { type: "knob-small", x: "60.12%", y: "32.50%", label: "Filter 1 - FM", short: "KFF1", defValue: -150 },
+    "knob-large-filter1": { type: "knob-large", x: "66.35%", y: "15.28%", label: "Filter 1 - Cutoff", short: "KLF1", defValue: -150 },
+    "knob-small-filter1res": { type: "knob-small", x: "72.55%", y: "32.50%", label: "Filter 1 - Res", short: "KFR1", defValue: -150 },
+    "knob-small-filter2fm": { type: "knob-small", x: "60.12%", y: "70.45%", label: "Filter 2 - FM", short: "KFF2", defValue: -150 },
+    "knob-large-filter2": { type: "knob-large", x: "66.35%", y: "87.75%", label: "Filter 2 - Cutoff", short: "KLF2", defValue: -150 },
+    "knob-small-filter2res": { type: "knob-small", x: "72.52%", y: "70.45%", label: "Filter 2 - Res", short: "KFR2", defValue: -150 },
     
-    "knob-small-mix1": { type: "knob-small", x: "88.80%", y: "13.18%", label: "Mix 1", short: "KM1", defValue: 0 },
-    "knob-small-mix2": { type: "knob-small", x: "88.75%", y: "23.31%", label: "Mix 2", short: "KM2", defValue: 0 },
-    "knob-small-mix3": { type: "knob-small", x: "88.80%", y: "33.52%", label: "Mix 3", short: "KM3", defValue: 0 },
-    "knob-small-mix4": { type: "knob-small", x: "96.47%", y: "33.55%", label: "Mix 4", short: "KM4", defValue: 0 },
-    "knob-small-mix1pan": { type: "knob-small", x: "96.39%", y: "13.27%", label: "Pan 1", short: "KMP1" },
-    "knob-small-mix2pan": { type: "knob-small", x: "96.47%", y: "23.28%", label: "Pan 2", short: "KMP2" },
-    "knob-large-volumeMain": { type: "knob-large", x: "92.62%", y: "87.65%", label: "Main Vol", short: "KVM", defValue: 0 },
-    "knob-small-stompFeedback": { type: "knob-small", x: "40.34%", y: "76.35%", label: "Stomp Fdbk", short: "KSF", defValue: 0 },
+    "knob-medium-amp": { type: "knob-medium", x: "51.35%", y: "16.75%", label: "Amp - Gain/Drive", short: "KMA", defValue: -150 }, 
+
+    "knob-small-voltagesBlend": { type: "knob-small", x: "52.26%", y: "67.50%", label: "Blend", short: "KVB" },
+
+    "knob-small-stompFeedback": { type: "knob-small", x: "40.3%", y: "76.35%", label: "Stomp Fdbk", short: "KSF", defValue: 0 },
+    "knob-small-stompBlend": { type: "knob-small", x: "44.5%", y: "67.50%", label: "Stomp - Blend", short: "KSB", defValue: 0 },
+
+    "knob-small-mix1": { type: "knob-small", x: "88.75%", y: "13.15%", label: "Mix 1", short: "KM1", defValue: 0 },
+    "knob-small-mix2": { type: "knob-small", x: "88.75%", y: "23.30%", label: "Mix 2", short: "KM2", defValue: 0 },
+    "knob-small-mix3": { type: "knob-small", x: "88.75%", y: "33.55%", label: "Mix 3", short: "KM3", defValue: 0 },
+    "knob-small-mix4": { type: "knob-small", x: "96.42%", y: "33.55%", label: "Mix 4", short: "KM4", defValue: 0 },
+    "knob-small-mix1pan": { type: "knob-small", x: "96.42%", y: "13.15%", label: "Pan 1", short: "KMP1" },
+    "knob-small-mix2pan": { type: "knob-small", x: "96.42%", y: "23.30%", label: "Pan 2", short: "KMP2" },
+    "knob-large-volumeMain": { type: "knob-large", x: "92.5%", y: "87.75%", label: "Main Vol", short: "KVM", defValue: 0 },
 
     // --- JACKS ---
     "jack-audio1in": { type: "jack", x: "2.47%", y: "46.15%", label: "Audio L In", short: "J1i" },
@@ -114,10 +116,10 @@ const SYSTEM_CONFIG = {
     "switch-3way-slopes2loop": { type: "switch-3way", x: "83.25%", y: "78.25%", label: "S2 Mode", short: "SL2l" },
     
     // --- BUTTONS ---
-    "button-1": { type: "button", x: "50.35%", y: "79.6%", label: "Button 1", short: "B1" },
-    "button-3": { type: "button", x: "50.35%", y: "89.1%", label: "Button 3", short: "B3" },
-    "button-2": { type: "button", x: "56%", y: "79.6%", label: "Button 2", short: "B2" },
-    "button-4": { type: "button", x: "56%", y: "89.1%", label: "Button 4", short: "B4" },
+    "button-1": { type: "button", x: "50.3%", y: "79.6%", label: "Button 1", short: "B1" },
+    "button-3": { type: "button", x: "50.3%", y: "89.1%", label: "Button 3", short: "B3" },
+    "button-2": { type: "button", x: "55.9%", y: "79.6%", label: "Button 2", short: "B2" },
+    "button-4": { type: "button", x: "55.9%", y: "89.1%", label: "Button 4", short: "B4" },
     
     // --- LEDS ---
     "led-amp-1": { type: "led", x: "49.9%", y: "10.5%", label: "Amp Lvl 1" },

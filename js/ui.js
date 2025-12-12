@@ -25,6 +25,25 @@ function renderComponents() {
     for(const id in SYSTEM_CONFIG) createComponent(id, SYSTEM_CONFIG[id]);
     
     if(typeof renderCardSlot === 'function') renderCardSlot(); 
+
+    // --- NEW: Enforce Voltage Group Default State ---
+    const vGroup = ['button-1', 'button-2', 'button-3', 'button-4'];
+    
+    // Check if any button in the group is currently active
+    const anyActive = vGroup.some(id => {
+        const btn = document.getElementById(id);
+        return btn && parseInt(btn.getAttribute('data-state') || 0) === 1;
+    });
+
+    // If none are active, activate button-1 by default
+    if (!anyActive) {
+        const b1 = document.getElementById('button-1');
+        if (b1) {
+            b1.setAttribute('data-state', 1);
+            b1.classList.add('is-touched');
+            componentStates['button-1'] = { type: 'button', value: 1, isTouched: true };
+        }
+    }
 }
 
 function createComponent(id, config) {
@@ -41,28 +60,25 @@ function createComponent(id, config) {
     tooltip.textContent = config.label || id; 
     el.appendChild(tooltip);
 
+    // --- Jacks ---
     if (config.type.includes('jack')) { 
         el.classList.add('jack'); 
-        
         el.addEventListener('click', handleJackClick); 
         el.addEventListener('mousedown', handleJackMouseDown);
         el.addEventListener('touchstart', handleJackMouseDown, {passive: false});
 
         el.addEventListener('dblclick', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
             const jackId = e.currentTarget.id;
             const cablesToRemove = cableData.filter(c => c.start === jackId || c.end === jackId);
             if (cablesToRemove.length > 0) {
                 cablesToRemove.forEach(c => removeCable(c.start, c.end));
-                redrawCables();
-                saveState();
-                triggerHandlingNoise();
-                updateAudioGraph();
+                redrawCables(); saveState(); triggerHandlingNoise(); updateAudioGraph();
             }
         });
     }
 
+    // --- Knobs ---
     if (config.type.startsWith('knob')) {
         const img = document.createElement('img');
         img.className = 'knob-img';
@@ -84,14 +100,36 @@ function createComponent(id, config) {
         
         updateKnobAngle(el, initialVal, initialTouch);
         
+        // Range Visualization
+        const rangeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        rangeSvg.classList.add("knob-range-overlay");
+        rangeSvg.setAttribute("viewBox", "0 0 100 100");
+        const rangePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        rangePath.classList.add("knob-range-path");
+        rangeSvg.appendChild(rangePath);
+        el.appendChild(rangeSvg);
+
         if(initialTouch) el.classList.add('is-touched'); 
         el.addEventListener('dblclick', (e) => { e.preventDefault(); resetKnob(el); });
     }
+    
+    // --- Buttons (UPDATED) ---
     else if (config.type.startsWith('button')) {
-        el.addEventListener('click', handleButtonClick); 
+        const voltageButtons = ['button-1', 'button-2', 'button-3', 'button-4'];
+        
+        if (voltageButtons.includes(id)) {
+            // Use special handler for voltage group
+            setupVoltageButtonInteraction(el);
+        } else {
+            // Use standard handler for other buttons
+            el.addEventListener('click', handleButtonClick); 
+        }
+
         el.setAttribute('data-state', saved ? saved.value : 0); 
         if(saved && saved.isTouched) el.classList.add('is-touched');
     } 
+    
+    // --- Switches ---
     else if (config.type.startsWith('switch')) {
         el.addEventListener('mousedown', startSwitchDrag);
         el.addEventListener('touchstart', startSwitchDrag, { passive: false });
@@ -102,9 +140,10 @@ function createComponent(id, config) {
         el.appendChild(document.createElement('div')).className = 'switch-handle';
         el.addEventListener('dblclick', (e) => { e.preventDefault(); resetSwitch(el); });
     }
-
+    addTouchLongPress(el);
     el.addEventListener('contextmenu', showContextMenu); 
     document.getElementById('synthContainer').appendChild(el);
+    if(config.type.startsWith('knob')) updateKnobRangeVisuals(el);
 }
 
 // --- 2. PEDALBOARD -------------------------------------------------------
@@ -193,6 +232,7 @@ function renderPedalboard() {
         el.appendChild(sw);
         
         el.addEventListener('contextmenu', (e) => { showContextMenu(e, pedalId); });
+        addTouchLongPress(el, (e) => showContextMenu(e, pedalId));
         inner.appendChild(el);
     });
 
@@ -372,7 +412,10 @@ function drawCable(startId, endId, color, isTemp, tempX, tempY, droop, label) {
                 startCableDrag(e, startId, endId);
             }, {passive: false});
             hitPath.addEventListener('touchend', () => unhighlightCable(baseId));
-
+            addTouchLongPress(hitPath, (e) => {
+                 if (isPerformanceMode) return;
+                 handleCableRightClick(e, startId, endId);
+            });
             layer.appendChild(hitPath);
         }
         hitPath.setAttribute('d', d);
@@ -500,6 +543,80 @@ function getZoomedCablePos(e) {
 }
 
 // --- 4. INPUT HANDLING (CABLES & LOGIC) ----------------------------------
+
+function addTouchLongPress(element, callback) {
+    let timer;
+    let touchStartX, touchStartY;
+    const PRESS_DELAY = 600; // ms to trigger context menu
+    const MOVE_TOLERANCE = 10; // pixels
+
+    const onTouchStart = (e) => {
+        if (e.touches.length !== 1) return;
+        
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        
+        timer = setTimeout(() => {
+            // 1. Create a fake event object compatible with showContextMenu logic
+            const fakeEvent = {
+                preventDefault: () => {},
+                stopPropagation: () => {},
+                currentTarget: element,
+                target: e.target,
+                clientX: e.touches[0].clientX,
+                clientY: e.touches[0].clientY,
+                pageX: e.touches[0].pageX,
+                pageY: e.touches[0].pageY,
+                touches: e.touches, // Pass touches through
+            };
+
+            // 2. Kill any active drags that started on touchstart
+            // (This prevents the knob/cable from moving while the menu is open)
+            if (typeof isDraggingKnob !== 'undefined' && isDraggingKnob) {
+                isDraggingKnob = false;
+                if(typeof stopKnobDrag === 'function') stopKnobDrag();
+            }
+            if (typeof isDraggingCable !== 'undefined' && isDraggingCable) {
+                isDraggingCable = false;
+                if(typeof stopCableDrag === 'function') stopCableDrag();
+                // Clean up ghost cable if needed
+                if(typeof removeTempCableVisuals === 'function') removeTempCableVisuals();
+                if(typeof disableGhostMode === 'function') disableGhostMode();
+            }
+            if (typeof isDraggingSwitch !== 'undefined' && isDraggingSwitch) {
+                isDraggingSwitch = false;
+                if(typeof stopSwitchDrag === 'function') stopSwitchDrag(fakeEvent);
+            }
+
+            // 3. Fire the specific callback (usually showContextMenu)
+            if (callback) {
+                callback(fakeEvent);
+            } else {
+                // Default fallback
+                showContextMenu(fakeEvent);
+            }
+        }, PRESS_DELAY);
+    };
+
+    const onTouchEnd = () => {
+        clearTimeout(timer);
+    };
+
+    const onTouchMove = (e) => {
+        const dx = Math.abs(e.touches[0].clientX - touchStartX);
+        const dy = Math.abs(e.touches[0].clientY - touchStartY);
+        // If finger moves too much, cancel the long press (it's a drag)
+        if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+            clearTimeout(timer);
+        }
+    };
+
+    element.addEventListener('touchstart', onTouchStart, { passive: true });
+    element.addEventListener('touchend', onTouchEnd, { passive: true });
+    element.addEventListener('touchmove', onTouchMove, { passive: true });
+}
+
+
 
 function handleGlobalMouseUp(e) {
     if (zombieHitPath) { zombieHitPath.remove(); zombieHitPath = null; }
@@ -904,19 +1021,47 @@ function stopCableDrag() {
 }
 
 // --- 5. INTERACTION (KNOBS, SWITCHES, NOTES) ----------------------------
+let knobDragLastAngle = 0; 
 
 function updateKnobAngle(el, val, isTouched = true) { 
     el.style.setProperty('--angle', val); 
-    componentStates[el.id] = { type: el.dataset.type, value: val, isTouched: isTouched }; 
+    const existingState = componentStates[el.id] || {};
+    componentStates[el.id] = { 
+        ...existingState, 
+        type: el.dataset.type, 
+        value: val, 
+        isTouched: isTouched 
+    }; 
     updateAudioParams(); 
 }
 
 function resetKnob(el) { 
     updateKnobAngle(el, SYSTEM_CONFIG[el.id]?.defValue || 0, false); 
-    el.classList.remove('is-touched'); 
+    el.classList.remove('is-touched');
     saveState(); 
 }    
-function startKnobDrag(e) { e.preventDefault(); isDraggingKnob = true; currentKnobElement = e.currentTarget; currentKnobElement.classList.add('is-touched'); triggerHandlingNoise(false); document.addEventListener('mousemove', dragKnob); document.addEventListener('mouseup', stopKnobDrag); document.addEventListener('touchmove', dragKnob, {passive:false}); document.addEventListener('touchend', stopKnobDrag); }
+function startKnobDrag(e) { 
+    e.preventDefault(); 
+    isDraggingKnob = true; 
+    currentKnobElement = e.currentTarget; 
+    currentKnobElement.classList.add('is-touched'); 
+    triggerHandlingNoise(false); 
+    
+    // NEW: Initialize the angle tracker
+    const rect = currentKnobElement.getBoundingClientRect(); 
+    const cx = e.clientX || e.touches[0].clientX;
+    const cy = e.clientY || e.touches[0].clientY; 
+    
+    // Calculate initial raw angle (-180 to 180)
+    let deg = (Math.atan2(cy - (rect.top+rect.height/2), cx - (rect.left+rect.width/2)) * 180 / Math.PI) + 90; 
+    if(deg > 180) deg -= 360; 
+    knobDragLastAngle = deg;
+
+    document.addEventListener('mousemove', dragKnob); 
+    document.addEventListener('mouseup', stopKnobDrag); 
+    document.addEventListener('touchmove', dragKnob, {passive:false}); 
+    document.addEventListener('touchend', stopKnobDrag); 
+}
 function stopKnobDrag() { isDraggingKnob = false; saveState(); document.removeEventListener('mousemove', dragKnob); document.removeEventListener('mouseup', stopKnobDrag); }
 function dragKnob(e) { 
     if (!isDraggingKnob) return; 
@@ -926,18 +1071,101 @@ function dragKnob(e) {
     const cx = e.clientX || e.touches[0].clientX;
     const cy = e.clientY || e.touches[0].clientY; 
     
+    // 1. Calculate current raw angle
     let deg = (Math.atan2(cy - (rect.top+rect.height/2), cx - (rect.left+rect.width/2)) * 180 / Math.PI) + 90; 
     if(deg > 180) deg -= 360; 
     
-    const clampedDeg = Math.max(-150, Math.min(150, deg));
+    // 2. Calculate Delta (Change since last frame)
+    let delta = deg - knobDragLastAngle;
     
-    if (Math.abs(clampedDeg - lastScratchAngle) > 3) {
+    // 3. Fix Wrap-Around (crossing the bottom gap)
+    // If we jumped from 179 to -179, delta is -358. We want +2.
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    
+    knobDragLastAngle = deg; // Update for next frame
+
+    // 4. Apply Delta to Current Value
+    const state = componentStates[currentKnobElement.id];
+    const currentVal = state ? state.value : 0;
+    
+    let newVal = currentVal + delta;
+
+    // 5. Apply Limits
+    let minLimit = -150;
+    let maxLimit = 150;
+    
+    if (state && state.range) {
+        minLimit = state.range[0];
+        maxLimit = state.range[1];
+    }
+    
+    // Clamp
+    newVal = Math.max(minLimit, Math.min(maxLimit, newVal));
+    
+    // 6. Audio Feedback & Update
+    if (Math.abs(newVal - lastScratchAngle) > 3) {
         triggerHandlingNoise(true); 
-        lastScratchAngle = clampedDeg; 
+        lastScratchAngle = newVal; 
     }
 
-    updateKnobAngle(currentKnobElement, clampedDeg); 
+    updateKnobAngle(currentKnobElement, newVal); 
 }
+
+function updateKnobRangeVisuals(el) {
+    const state = componentStates[el.id];
+    const path = el.querySelector('.knob-range-path');
+    if (!path) return;
+
+    let radius = 46; 
+    let min = -150;
+    let max = 150;
+    switch (el.dataset.type) {
+        case 'knob-large':
+            radius = 49; // Tighter on large knobs
+            min = -150;
+            max = 150;
+            break;
+        case 'knob-medium':
+            radius = 54; 
+            min = -150;
+            max = 150;
+            break;
+        case 'knob-small':
+            radius = 68;
+            min = -135;
+            max = 135;
+            break;
+        default:
+            radius = 46;
+    }
+
+    if (state && state.range && Array.isArray(state.range)) {
+        min = (typeof state.range[0] === 'number' && !isNaN(state.range[0])) ? state.range[0] : -150;
+        max = (typeof state.range[1] === 'number' && !isNaN(state.range[1])) ? state.range[1] : 150;
+        path.style.display = 'block';
+    } else {
+        path.style.display = 'none'; 
+        
+        return;
+    }
+    
+
+    const startPoint = polarToCartesian(50, 50, radius, min);
+    const endPoint = polarToCartesian(50, 50, radius, max);
+
+    let diff = max - min;
+    if (diff < 0) diff += 360;
+    const largeArcFlag = diff <= 180 ? "0" : "1";
+
+    const d = describeArc(50, 50, radius, radius-4, min, max);
+    
+    path.setAttribute('d', d);
+}
+
+    
+
+
 function handleKnobWheel(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -976,6 +1204,7 @@ function createNoteElement(d) {
     const el = document.createElement('div'); el.className = 'note-element'; el.id = d.id; el.style.left = d.x; el.style.top = d.y; el.textContent = d.text; el.contentEditable = true;
     if(d.color) el.style.color = d.color; if(d.backgroundColor) el.style.backgroundColor = d.backgroundColor; if(d.border) el.style.border = d.border; if(!d.color) el.classList.add('default-style');
     el.addEventListener('mousedown', startDragNote); el.addEventListener('touchstart', startDragNote); el.addEventListener('blur', saveState); el.addEventListener('contextmenu', showContextMenu);
+    addTouchLongPress(el);
     return el;
 }
 function startDragNote(e) { 
@@ -1166,6 +1395,18 @@ function showContextMenu(e, pedalId = null) {
     else if (el.id === 'pedalboard') {
         menu.querySelector('[data-action="addPedal"]').style.display = 'block';
     }
+    if(el.dataset.type && el.dataset.type.startsWith('knob')) {
+            menu.querySelector('[data-action="setValue"]').style.display = 'block'; 
+            
+            let rangeBtn = menu.querySelector('[data-action="setRange"]');
+            if(!rangeBtn) {
+                rangeBtn = document.createElement('li'); 
+                rangeBtn.dataset.action = 'setRange';
+                rangeBtn.textContent = 'Set Limits';
+                menu.appendChild(rangeBtn);
+            }
+            rangeBtn.style.display = 'block';
+        }
     else if (contextTarget === null || contextTarget.classList.contains('card-slot-container') || contextTarget.classList.contains('program-card')) {
         let cardBtn = menu.querySelector('[data-action="changeCard"]');
         if(!cardBtn) {
@@ -1260,6 +1501,300 @@ function initColorPicker() {
     };
     document.addEventListener('click', () => menu.classList.remove('open'));
 }
+
+/* =========================================================================
+   RANGE EDIT MODE (Complete & Optimized)
+   ========================================================================= */
+
+let isEditingRange = false;
+let currentRangeKnob = null;
+let rangeHandleMin = null;
+let rangeHandleMax = null;
+
+function initRangeEditMode(knobEl) {
+    // Prevent double-init
+    if (isEditingRange) exitRangeEditMode();
+    
+    isEditingRange = true;
+    currentRangeKnob = knobEl;
+    knobEl.classList.add('range-edit-active');
+    
+    // 1. Ensure component state exists
+    if (!componentStates[knobEl.id]) {
+        componentStates[knobEl.id] = { 
+            type: knobEl.dataset.type, 
+            value: SYSTEM_CONFIG[knobEl.id]?.defValue || 0, 
+            isTouched: false 
+        };
+    }
+    
+    // 2. Initialize range in state immediately if missing
+    if (!componentStates[knobEl.id].range) {
+        componentStates[knobEl.id].range = [-150, 150];
+    }
+    
+    // 3. Now it is safe to read
+    let [min, max] = componentStates[knobEl.id].range;
+    
+    // Show the visual path
+    const path = knobEl.querySelector('.knob-range-path');
+    if (path) path.style.display = 'block';
+    updateKnobRangeVisuals(knobEl); 
+
+    // Helper to position handles
+    const placeHandle = (angle, cls) => {
+        const h = document.createElement('div');
+        h.className = `range-edit-handle ${cls}`;
+        
+        const rect = knobEl.getBoundingClientRect();
+        const rad = (angle - 90) * Math.PI / 180;
+        const radius = rect.width * 0.65; 
+        
+        const x = (rect.width / 2) + (radius * Math.cos(rad));
+        const y = (rect.height / 2) + (radius * Math.sin(rad));
+        
+        h.style.left = `${x}px`;
+        h.style.top = `${y}px`;
+        
+        // Add listeners for both Mouse and Touch
+        h.addEventListener('mousedown', (e) => startRangeHandleDrag(e, cls.includes('min-handle')));
+        h.addEventListener('touchstart', (e) => startRangeHandleDrag(e, cls.includes('min-handle')), {passive: false});
+        
+        knobEl.appendChild(h);
+        return h;
+    };
+
+    rangeHandleMin = placeHandle(min, 'min-handle');
+    rangeHandleMax = placeHandle(max, 'max-handle');
+
+    setTimeout(() => {
+        document.addEventListener('mousedown', checkRangeEditClickOutside, { capture: true });
+        document.addEventListener('touchstart', checkRangeEditClickOutside, { capture: true, passive: false });
+    }, 50);
+}
+
+function startRangeHandleDrag(e, isMin) {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const rect = currentRangeKnob.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const radius = rect.width * 0.55; 
+
+    // Initialize Tracker
+    let cx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+    let cy = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+    let lastDeg = (Math.atan2(cy - centerY, cx - centerX) * 180 / Math.PI) + 90;
+    if(lastDeg > 180) lastDeg -= 360;
+
+    let currentX, currentY;
+    let isFramePending = false;
+
+    const onMove = (em) => {
+        if (!currentRangeKnob) return;
+        
+        if (em.touches && em.touches.length > 0) {
+            currentX = em.touches[0].clientX;
+            currentY = em.touches[0].clientY;
+        } else {
+            currentX = em.clientX;
+            currentY = em.clientY;
+        }
+
+        if (!isFramePending) {
+            isFramePending = true;
+            requestAnimationFrame(updateLoop);
+        }
+    };
+
+    const updateLoop = () => {
+        if (!currentRangeKnob) {
+            isFramePending = false;
+            return;
+        }
+
+        const compState = componentStates[currentRangeKnob.id];
+        if (!compState || !compState.range) {
+            isFramePending = false;
+            return;
+        }
+
+        // 1. Current Angle
+        let deg = (Math.atan2(currentY - centerY, currentX - centerX) * 180 / Math.PI) + 90;
+        if (deg > 180) deg -= 360;
+        
+        if (isNaN(deg)) { isFramePending = false; return; }
+
+        // 2. Delta & Wrap
+        let delta = deg - lastDeg;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        lastDeg = deg;
+
+        // 3. Apply Delta to target Handle
+        // We read the *current* state value and add the delta
+        let currentVal = isMin ? compState.range[0] : compState.range[1];
+        let newVal = currentVal + delta;
+
+        // 4. Hard Limits
+        newVal = Math.max(-150, Math.min(150, newVal));
+
+        // 5. Min/Max Collision Logic
+        if (isMin) {
+            // Don't let Min cross Max
+            const curMax = compState.range[1];
+            if (newVal >= curMax) newVal = curMax - 1; // Keep 1 degree gap
+            compState.range[0] = newVal;
+        } else {
+            // Don't let Max cross Min
+            const curMin = compState.range[0];
+            if (newVal <= curMin) newVal = curMin + 1;
+            compState.range[1] = newVal;
+        }
+        
+        // 6. Visual Updates
+        updateKnobRangeVisuals(currentRangeKnob);
+        
+        const rad = (newVal - 90) * Math.PI / 180;
+        const h = isMin ? rangeHandleMin : rangeHandleMax;
+        
+        if (h) {
+            h.style.left = `${(rect.width/2) + radius * Math.cos(rad)}px`;
+            h.style.top = `${(rect.height/2) + radius * Math.sin(rad)}px`;
+        }
+        
+        // Push knob value if range overtook it
+        const kVal = compState.value;
+        if (kVal < compState.range[0]) updateKnobAngle(currentRangeKnob, compState.range[0]);
+        if (kVal > compState.range[1]) updateKnobAngle(currentRangeKnob, compState.range[1]);
+
+        isFramePending = false;
+    };
+
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+        saveState();
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+}
+
+function checkRangeEditClickOutside(e) {
+    // Close edit mode if clicking anywhere other than the active knob or its handles
+    if (currentRangeKnob && !currentRangeKnob.contains(e.target)) {
+        exitRangeEditMode();
+    }
+}
+
+function exitRangeEditMode() {
+    if (!currentRangeKnob) return;
+    
+    currentRangeKnob.classList.remove('range-edit-active');
+    
+    if (rangeHandleMin) rangeHandleMin.remove();
+    if (rangeHandleMax) rangeHandleMax.remove();
+
+    document.removeEventListener('mousedown', checkRangeEditClickOutside, { capture: true });
+    document.removeEventListener('touchstart', checkRangeEditClickOutside, { capture: true });
+    
+    // (Cleaning up empty range logic)
+    const r = componentStates[currentRangeKnob.id].range;
+    if (r && r[0] <= -148 && r[1] >= 148) {
+        delete componentStates[currentRangeKnob.id].range;
+        const path = currentRangeKnob.querySelector('.knob-range-path');
+        if (path) path.style.display = 'none';
+    }
+    
+    isEditingRange = false;
+    currentRangeKnob = null;
+    saveState();
+}
+
+/* =========================================================================
+   VOLTAGE BUTTON GROUP LOGIC
+   ========================================================================= */
+
+function setupVoltageButtonInteraction(el) {
+    let pressTimer;
+    let isLongPress = false;
+
+    // Mouse Events
+    el.addEventListener('mousedown', () => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => { isLongPress = true; }, 600); // 600ms hold
+    });
+
+    el.addEventListener('click', (e) => {
+        clearTimeout(pressTimer);
+        // Trigger Multi if Shift key OR Long Press was detected
+        const isMulti = e.shiftKey || isLongPress;
+        handleVoltageGroupLogic(el, isMulti);
+    });
+
+    // Touch Events
+    el.addEventListener('touchstart', (e) => {
+        isLongPress = false;
+        pressTimer = setTimeout(() => { isLongPress = true; }, 600);
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+        clearTimeout(pressTimer);
+        if (isLongPress) {
+            e.preventDefault(); // Prevent standard click if long press handled
+            handleVoltageGroupLogic(el, true);
+        }
+    });
+}
+
+function handleVoltageGroupLogic(targetEl, isMulti) {
+    const groupIds = ['button-1', 'button-2', 'button-3', 'button-4'];
+    const isActive = parseInt(targetEl.getAttribute('data-state') || 0) === 1;
+
+    // Helper to update button state (DOM + Component State)
+    const setBtnState = (id, state) => {
+        const btn = document.getElementById(id);
+        if(btn) {
+            const val = state ? 1 : 0;
+            btn.setAttribute('data-state', val);
+            btn.classList.add('is-touched');
+            componentStates[id] = { type: 'button', value: val, isTouched: true };
+        }
+    };
+
+    if (!isMulti) {
+        // MODE 1: RADIO (Exclusive)
+        // Turn target ON, turn all others OFF
+        groupIds.forEach(id => {
+            setBtnState(id, id === targetEl.id);
+        });
+    } else {
+        // MODE 2: MULTI (Toggle)
+        setBtnState(targetEl.id, !isActive);
+        
+        // Rule: At least one must be active
+        const anyActive = groupIds.some(id => {
+            const b = document.getElementById(id);
+            return b && parseInt(b.getAttribute('data-state') || 0) === 1;
+        });
+        
+        if (!anyActive) {
+            // If we just turned off the last one, force it back on
+            setBtnState(targetEl.id, true); 
+        }
+    }
+
+    updateAudioParams();
+    saveState();
+}
+
+
 
 // --- 7. EXPORT & SAVING --------------------------------------------------
 
@@ -1820,10 +2355,15 @@ function loadState(state) {
     if (notesArea) notesArea.value = state.globalNotes || "";
 
     renderComponents(); 
+
     document.querySelectorAll('.note-element').forEach(el => el.remove()); 
     noteData.forEach(n => document.getElementById('synthContainer').appendChild(createNoteElement(n)));
     renderPedalboard(); 
-    
+    document.querySelectorAll('.component[data-type^="knob"]').forEach(el => {
+        if (componentStates[el.id] && componentStates[el.id].range) {
+            updateKnobRangeVisuals(el);
+        }
+    });
     const targetCardId = state.activeCardId || 'reverb';
     swapComputerCard(targetCardId);
 
@@ -2189,6 +2729,8 @@ window.onload = function() {
                 renderPedalboard(); 
                 connectPedalChain();
             }
+        }else if(act === 'setRange' && contextTarget) {
+            initRangeEditMode(contextTarget);
         }
     });
 
