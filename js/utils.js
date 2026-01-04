@@ -32,14 +32,14 @@ function getRandomColor() {
 
 function generateRandomName() {
     return ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] + ' ' +
-           ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] + ' ' +
-           NOUNS[Math.floor(Math.random() * NOUNS.length)];
+        ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] + ' ' +
+        NOUNS[Math.floor(Math.random() * NOUNS.length)];
 }
 
 function showMessage(message, type = 'info') {
     const box = document.getElementById('messageBox');
     box.textContent = message.replace(/\*\*(.*?)\*\*/g, (match, p1) => p1);
-    
+
     let baseClass = 'fixed bottom-4 right-4 p-4 rounded-lg shadow-2xl transition-opacity duration-300 opacity-100 z-50';
     let typeClass = '';
 
@@ -55,7 +55,7 @@ function showMessage(message, type = 'info') {
 
     box.className = baseClass + typeClass;
     box.style.display = 'block';
-    
+
     clearTimeout(box.timer);
     box.timer = setTimeout(() => {
         box.classList.remove('opacity-100');
@@ -84,15 +84,21 @@ function getLongId(shortId) {
 function getPos(id) {
     const el = document.getElementById(id);
     if (!el) return null;
-    
+
     const rect = el.getBoundingClientRect();
     const container = document.getElementById('synthContainer');
     if (!container) return null;
-    
+
     const contRect = container.getBoundingClientRect();
     // Use the global VIEWPORT.scale
     const currentScale = (typeof VIEWPORT !== 'undefined') ? VIEWPORT.scale : 1.0;
 
+    // Check if this is a custom gear component (no translate transform)
+    const isCustom = SYSTEM_CONFIG && SYSTEM_CONFIG[id] && SYSTEM_CONFIG[id].isCustom;
+
+    // For custom components, the center is already at the element's center
+    // For standard components, getBoundingClientRect already gives us the right bounds
+    // since we want the visual center of the element
     return {
         x: ((rect.left + rect.width / 2) - contRect.left) / currentScale,
         y: ((rect.top + rect.height / 2) - contRect.top) / currentScale
@@ -169,14 +175,14 @@ function describeArc(x, y, outerRadius, innerRadius, startAngle, endAngle) {
     // Start = Min Angle, End = Max Angle
     const startOuter = polarToCartesian(x, y, outerRadius, startAngle);
     const endOuter = polarToCartesian(x, y, outerRadius, endAngle);
-    
+
     // The "corners" point inwards
     const startInner = polarToCartesian(x, y, innerRadius, startAngle);
     const endInner = polarToCartesian(x, y, innerRadius, endAngle);
 
     let diff = endAngle - startAngle;
     if (diff < 0) diff += 360;
-    
+
     const largeArcFlag = diff <= 180 ? "0" : "1";
 
     // Path Logic:
@@ -185,7 +191,7 @@ function describeArc(x, y, outerRadius, innerRadius, startAngle, endAngle) {
     // 3. Arc to Max Outer
     // 4. Line to Max Inner (Corner Tip)
     // 5. NO CLOSING (Open path)
-    
+
     const d = [
         "M", startInner.x, startInner.y,
         "L", startOuter.x, startOuter.y,
@@ -204,7 +210,7 @@ function createDistortionCurve(amount) {
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
     const deg = Math.PI / 180;
-    
+
     for (let i = 0; i < n_samples; ++i) {
         const x = (i * 2) / n_samples - 1;
         curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
@@ -608,7 +614,7 @@ function optimizeState(raw) {
 
             // Short ID key
             const k = getShortId(longKey);
-            
+
             // Value is always saved as integer (x1000)
             const val = Math.round(data.value * 1000);
 
@@ -641,7 +647,9 @@ function optimizeState(raw) {
         cs: minComponents,
         c: minCables,
         nt: minNotes,
-        aci: raw.activeCardId
+        aci: raw.activeCardId,
+        po: raw.pedalOrder,
+        cm: raw.customModules
     };
 }
 
@@ -656,11 +664,11 @@ function expandOptimizedState(min) {
             if (Array.isArray(rawVal)) {
                 value = rawVal[0] / 1000;
                 range = [rawVal[1], rawVal[2]];
-            } 
+            }
             // Check for legacy object format { v: 123 }
             else if (typeof rawVal === 'object' && rawVal !== null && rawVal.v !== undefined) {
                 value = rawVal.v / 1000;
-            } 
+            }
             // Standard number format
             else {
                 value = rawVal / 1000;
@@ -691,7 +699,9 @@ function expandOptimizedState(min) {
         componentStates: components,
         cables: cables,
         notes: notes,
-        activeCardId: min.aci || 'none'
+        activeCardId: min.aci || 'none',
+        pedalOrder: min.po || [],
+        customModules: min.cm || []
     };
 }
 
@@ -745,22 +755,49 @@ function injectPrintStyles() {
     const oldStyle = document.getElementById('mtm-print-styles');
     if (oldStyle) oldStyle.remove();
 
-    const synth = document.getElementById('synthContainer');
+    // Calculate total width including external gear racks
+    const synthContainer = document.getElementById('synthContainer');
+    const synthW = synthContainer.offsetWidth;
+    let contentW = synthW;
+
+    const leftRack = document.getElementById('externalGearRackLeft');
+    const rightRack = document.getElementById('externalGearRackRight');
+
+    let leftExtra = 0;
+    let rightExtra = 0;
+
+    if (leftRack && leftRack.children.length > 0) {
+        leftExtra = leftRack.offsetWidth + 40;
+        contentW += leftExtra;
+    }
+    if (rightRack && rightRack.children.length > 0) {
+        rightExtra = rightRack.offsetWidth + 40;
+        contentW += rightExtra;
+    }
+
     const pedals = document.getElementById('pedalboard');
     const isPedalOpen = pedals && pedals.classList.contains('open');
-    const contentW = synth.offsetWidth;
 
-    let totalHeight = synth.offsetHeight;
+    let totalHeight = synthContainer.offsetHeight;
     if (isPedalOpen) totalHeight += 350;
     totalHeight += 250;
 
     const a4W = 1100;
     const a4H = 750;
     let scale = Math.min(a4W / contentW, a4H / totalHeight);
-    if (scale > 1) scale = 1;
+
+    // Allow scaling up for small patches, but cap reasonable max
+    if (scale > 2.5) scale = 2.5;
 
     const SCALED_BOARD_HEIGHT = 800 * scale;
-    let leftOffset = isPedalOpen ? 50 : 20;
+    // Base left offset for page + shift needed for left rack
+    const pageMarginMm = 10;
+
+    // We want to center the whole assembly (ContentW) on the page
+    // margin-left for synthContainer needs to be large enough to show left rack
+    // Plus any extra to center the whole thing if it's smaller than the page
+    // BUT simply: adding margin-left = leftExtra to synthContainer puts it in the right visual spot relative to wrapper
+    // Then we center the wrapper.
 
     const css = `
     @media print {
@@ -778,20 +815,38 @@ function injectPrintStyles() {
         }
         
         #mainContentWrapper {
-            width: ${contentW}px !important;
-            margin: 0 auto !important; padding: 0 !important;
-            display: block !important; position: relative;
-            top: 10mm; left: ${leftOffset}mm;
-            transform: scale(${scale}); transform-origin: top left;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important; padding: 0 !important;
+            display: flex !important; 
+            flex-direction: column;
+            align-items: center; /* Centers horizontally */
+            justify-content: flex-start;
+            position: relative;
+            top: 10mm; 
+            transform: scale(${scale}); 
+            transform-origin: top center;
             background-color: white !important;
+            overflow: visible !important;
         }
 
         #synthContainer {
+            position: relative !important;
             border: 1px solid #000 !important; box-shadow: none !important;
-            margin: 0 auto 20px auto !important; background-color: #fff !important;
+            background-color: #fff !important;
             border-radius: 0px;
+            /* Shift right to make room for left rack, then subtract half the difference between L/R extras to optical center? 
+               Easier: just set margin-left to leftExtra. flex-align center on wrapper will center the BLOCK (synth+margin).
+               Wait, flexible centering centers the box. If the box has margin, the margin is included.
+               If I set margin-left: ${leftExtra}px, the synth moves right. 
+               The block width is effectively synthW + leftExtra. 
+               If rightExtra is 0, visual center is off.
+               Let's try explicit margin logic: */
+            margin: 0 !important;
+            margin-left: ${leftExtra}px !important; 
+            margin-right: ${rightExtra}px !important;
         }
-
+        
         #pedalboard.open {
             border: none !important;
             background: transparent !important;
@@ -812,6 +867,13 @@ function injectPrintStyles() {
             display: flex !important;
             flex-wrap: nowrap !important;
             padding: 1.5rem !important;
+        }
+        
+        /* Ensure external gear racks are visible and properly positioned */
+        #externalGearRackLeft, #externalGearRackRight {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
         
         /* Keep Colors (Removed 'stroke: #000') */

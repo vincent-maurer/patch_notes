@@ -8,9 +8,14 @@
 function renderComponents() {
     const container = document.getElementById('synthContainer');
 
-    // 1. Clear Old Elements (Keep Cables/Notes)
+    // 1. Clear Old Elements (Keep Cables/Notes/ExternalGear)
     Array.from(container.children).forEach(c => {
-        if (!c.classList.contains('cable-svg') && !c.classList.contains('note-element')) c.remove();
+        if (!c.classList.contains('cable-svg') &&
+            !c.classList.contains('note-element') &&
+            c.id !== 'externalGearRackLeft' &&
+            c.id !== 'externalGearRackRight') {
+            c.remove();
+        }
     });
 
     // Panel Background
@@ -21,8 +26,11 @@ function renderComponents() {
     panelImg.draggable = false;
     container.appendChild(panelImg);
 
-    // 2. Create Components
-    for (const id in SYSTEM_CONFIG) createComponent(id, SYSTEM_CONFIG[id]);
+    // 2. Create Components (Skip custom gear - they render in their own rack)
+    for (const id in SYSTEM_CONFIG) {
+        if (SYSTEM_CONFIG[id].isCustom) continue; // Skip external gear components
+        createComponent(id, SYSTEM_CONFIG[id]);
+    }
 
     if (typeof renderCardSlot === 'function') renderCardSlot();
 
@@ -1095,6 +1103,12 @@ function dragKnob(e) {
     let minLimit = -150;
     let maxLimit = 150;
 
+    // Apply Type-Specific Defaults if no custom range
+    if (currentKnobElement.dataset.type === 'knob-small') {
+        minLimit = -135;
+        maxLimit = 135;
+    }
+
     if (state && state.range) {
         minLimit = state.range[0];
         maxLimit = state.range[1];
@@ -1246,7 +1260,7 @@ function saveNotePositions() { noteData = Array.from(document.querySelectorAll('
 
 function startChassisDrag(e) {
     if (e.button !== 0) return;
-    if (e.target.closest('.component') || e.target.tagName === 'path' || e.target.tagName === 'text' || e.target.classList.contains('note-element')) return;
+    if (e.target.closest('.component') || e.target.tagName === 'path' || e.target.tagName === 'text' || e.target.classList.contains('note-element') || e.target.tagName === 'INPUT') return;
     e.preventDefault();
     isDraggingChassis = true;
     const cx = e.clientX || e.touches[0].clientX;
@@ -1878,6 +1892,7 @@ function setupExportHandlers() {
                 VIEWPORT.x = 0;
                 VIEWPORT.y = 0;
                 updateInterfaceScaling();
+
                 let header = document.querySelector('.print-header');
                 if (!header) {
                     header = document.createElement('div');
@@ -1885,14 +1900,23 @@ function setupExportHandlers() {
                     wrapper.prepend(header);
                 }
                 header.innerHTML = `<h1>${patchName}</h1>`;
+
                 let notesDiv = document.querySelector('.print-notes');
                 if (!notesDiv) {
                     notesDiv = document.createElement('div');
                     notesDiv.className = 'print-notes';
                     wrapper.appendChild(notesDiv);
                 }
-                notesDiv.textContent = notes;
-                injectPrintStyles();
+                notesDiv.innerText = notes;
+
+                if (typeof injectPrintStyles === 'function') injectPrintStyles();
+
+                // Keep external gear in its original position (to the right/left)
+                // Just ensure it's visible - no repositioning needed
+                const leftRack = document.getElementById('externalGearRackLeft');
+                const rightRack = document.getElementById('externalGearRackRight');
+                const hasGear = (leftRack && leftRack.children.length > 0) || (rightRack && rightRack.children.length > 0);
+
                 const wasDark = document.body.classList.contains('dark-mode');
                 if (wasDark) {
                     document.body.classList.remove('dark-mode');
@@ -1902,10 +1926,27 @@ function setupExportHandlers() {
                         img.src = img.src.replace('_dark.svg', '.svg');
                     });
                 }
+
                 await new Promise(r => setTimeout(r, 150));
                 updatePedalCables();
                 redrawCables();
+
+                // Fix cable scaling alignment for print:
+                // We force the SVG to adopt the exact pixel dimensions of the container as its viewBox.
+                // This ensures that if the container is resized (shrunk) by the print layout,
+                // the internal SVG coordinates scale down proportionally instead of remaining fixed in pixels.
+                const cableLayer = document.getElementById('cableLayer');
+                const synthCont = document.getElementById('synthContainer');
+                if (cableLayer && synthCont) {
+                    const w = synthCont.offsetWidth;
+                    const h = synthCont.offsetHeight;
+                    cableLayer.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                }
+
                 window.print();
+
+                if (cableLayer) cableLayer.removeAttribute('viewBox');
+
                 Object.assign(VIEWPORT, savedViewport);
                 if (wasDark) {
                     document.body.classList.add('dark-mode');
@@ -1915,15 +1956,68 @@ function setupExportHandlers() {
                         img.src = img.src.replace('.svg', '_dark.svg');
                     });
                 }
+
+                // Restore external gear position
+                if (hasGear) {
+                    // No specific restoration needed as they weren't repositioned
+                }
+
                 updateViewport();
                 updateInterfaceScaling();
+                header.remove();
+                notesDiv.remove();
                 setTimeout(() => {
                     updatePedalCables();
                     redrawCables();
                 }, 100);
                 break;
+
+            case 'saveGearButton':
+                const gearState = { customModules: CUSTOM_MODULES || [] };
+                const gearBlob = new Blob([JSON.stringify(gearState, null, 2)], { type: 'application/json' });
+                const gearA = document.createElement('a'); gearA.href = URL.createObjectURL(gearBlob);
+                gearA.download = 'external_gear_config.json';
+                gearA.click(); showMessage("Saved Gear Config!", "success");
+                break;
+
+            case 'loadGearButton':
+                document.getElementById('loadGearInput').click();
+                break;
         }
     });
+
+    // Load Gear Handler
+    const gearInput = document.getElementById('loadGearInput');
+    if (gearInput) {
+        gearInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if (data.customModules && Array.isArray(data.customModules)) {
+                        data.customModules.forEach(mod => {
+                            if (CUSTOM_MODULES.some(m => m.id === mod.id)) {
+                                mod.id = mod.id + '_' + Date.now();
+                            }
+                            CUSTOM_MODULES.push(mod);
+                            renderCustomModuleToDOM(mod);
+                        });
+                        saveState();
+                        showMessage("Imported Gear!", "success");
+                    } else {
+                        showMessage("Invalid Gear File", "error");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showMessage("Import Failed", "error");
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+    }
 }
 
 function savePatchAsPng() {
@@ -2010,24 +2104,77 @@ function savePatchAsPng() {
         else k.style.transform = `rotate(${angle}deg)`;
     });
 
-    const fullWidth = wrapper.scrollWidth + 20;
-    const fullHeight = wrapper.scrollHeight + 20;
+    // Calculate dimensions including external gear racks
+    const synthContainer = document.getElementById('synthContainer');
+    const leftRack = document.getElementById('externalGearRackLeft');
+    const rightRack = document.getElementById('externalGearRackRight');
+
+    // Store original widths to restore later
+    const originalWrapperWidth = wrapper.style.width;
+    const originalSynthMargin = synthContainer.style.marginLeft;
+    const originalSynthWidth = synthContainer.style.width;
+
+    // We need to capture the full visual width.
+    // Lock synth dimensions to ensure layout (and rack positioning) doesn't shift
+    let synthWidth = synthContainer.offsetWidth;
+    synthContainer.style.width = `${synthWidth}px`;
+
+    // Calculate total layout width
+    let totalWidth = synthWidth;
+    let leftExt = 0;
+
+    // Check if any racks exist to enable symmetric spacing
+    const hasLeft = leftRack && leftRack.children.length > 0;
+    const hasRight = rightRack && rightRack.children.length > 0;
+
+    if (hasLeft || hasRight) {
+        // Calculate max rack width for symmetry
+        const leftW = hasLeft ? leftRack.offsetWidth + 40 : 0;
+        const rightW = hasRight ? rightRack.offsetWidth + 40 : 0;
+        const rackSpace = Math.max(leftW, rightW, 300); // Minimum 300px spacing if racks exist
+
+        // Add symmetric space to both sides
+        totalWidth += (rackSpace * 2);
+        leftExt = rackSpace; // Shift synth by this amount
+    }
+    leftExt = 0;
+    // Add some padding
+    totalWidth += 60; // 30px padding each side
+    let fullHeight = wrapper.scrollHeight + 40;
+
     const scale = 3;
 
     const options = {
-        width: fullWidth * scale,
+        width: totalWidth * scale,
         height: fullHeight * scale,
         style: {
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
-            width: `${fullWidth}px`,
+            width: `${totalWidth}px`,
             height: `${fullHeight}px`,
             backgroundColor: currentBgColor,
-            maxWidth: 'none', minWidth: 'none', margin: '0', padding: '25px'
+            maxWidth: 'none', minWidth: 'none', margin: '0',
+            // Important: We need to center the content visually in this new box
+            // The synth is currently centered in wrapper.
+            // We force flex layout to center everything
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: '20px',
+
+            // To incorporate the left rack which is absolutely positioned to the left of synth,
+            // we need to push the synth to the right by leftExt.
+            // Effectively, we are creating a new view where margin-left on synth reveals the left rack.
         },
         cacheBust: false,
         filter: (node) => (node.id !== 'messageBox')
     };
+
+    // Temporarily apply margin to synthContainer during capture to reveal left rack w/o negative coordinates
+    if (leftExt > 0) {
+        synthContainer.style.marginLeft = `${leftExt}px`;
+    }
 
     domtoimage.toPng(wrapper, options)
         .then((dataUrl) => {
@@ -2035,12 +2182,18 @@ function savePatchAsPng() {
             const compressed = LZString.compressToBase64(JSON.stringify(optimized));
             const finalUrl = injectPngMetadata(dataUrl, PNG_KEYWORD, compressed);
             const link = document.createElement('a');
-            link.download = patchName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.png';
+            link.download = (patchName || 'patch') + '.png';
             link.href = finalUrl;
             link.click();
             showMessage("Saved High-Res PNG!", "success");
         })
-        .catch((error) => { console.error(error); showMessage("Export Failed.", "error"); })
+        .catch((error) => {
+            console.error(error);
+            showMessage("Export Failed.", "error");
+            // Restore synth margins/width on error too
+            synthContainer.style.marginLeft = originalSynthMargin;
+            synthContainer.style.width = originalSynthWidth;
+        })
         .finally(() => {
             document.body.classList.remove('exporting');
             wrapper.style.transform = originalTransform;
@@ -2056,19 +2209,19 @@ function savePatchAsPng() {
             if (notesAreaBox) notesAreaBox.style.display = '';
             if (header) header.style.display = '';
 
-            if (pedalboard) {
+            if (wasPbOpen) {
                 pedalboard.style.cssText = originalPbStyle;
-                if (!originalPbStyle) {
-                    pedalboard.style.background = '';
-                    pedalboard.style.border = '';
-                    pedalboard.style.boxShadow = '';
-                    pedalboard.style.display = '';
-                }
+            } else if (pedalboard) {
+                pedalboard.style.display = ''; // Restore default display if it was hidden
             }
+
+            // Restore synth margins and width
+            synthContainer.style.marginLeft = originalSynthMargin;
+            synthContainer.style.width = originalSynthWidth;
 
             wrapper.style.backgroundColor = originalBg;
             headerContainer.remove();
-            if (notesContainer) notesContainer.remove();
+            if (notesContainer.parentElement) notesContainer.remove();
         });
 }
 
@@ -2328,7 +2481,8 @@ function getCurrentPatchState() {
         cables: cableData,
         notes: saveNotePositions(),
         pedalOrder: activePedalChain,
-        activeCardId: currentCardId
+        activeCardId: currentCardId,
+        customModules: CUSTOM_MODULES
     };
 }
 
@@ -2348,6 +2502,39 @@ function loadState(state) {
     cableData = state.cables || [];
     noteData = state.notes || [];
     componentStates = state.componentStates || {};
+
+    // --- RESTORE EXTERNAL GEAR ---
+    // 1. Cleanup existing custom modules from SYSTEM_CONFIG and DOM
+    if (typeof CUSTOM_MODULES !== 'undefined') {
+        CUSTOM_MODULES.forEach(mod => {
+            // Remove jacks from SYSTEM_CONFIG
+            const inputs = mod.config.inputs || 0;
+            const outputs = mod.config.outputs || 0;
+            const knobs = mod.config.knobs || 0;
+
+            for (let i = 0; i < inputs; i++) delete SYSTEM_CONFIG[`${mod.id}_in_${i}`];
+            for (let i = 0; i < outputs; i++) delete SYSTEM_CONFIG[`${mod.id}_out_${i}`];
+            for (let i = 0; i < knobs; i++) delete SYSTEM_CONFIG[`${mod.id}_knob_${i}`];
+        });
+        CUSTOM_MODULES = []; // Reset registry
+    }
+    const leftRack = document.getElementById('externalGearRackLeft');
+    const rightRack = document.getElementById('externalGearRackRight');
+    if (leftRack) leftRack.innerHTML = '';
+    if (rightRack) rightRack.innerHTML = '';
+
+    // 2. Load from State
+    if (state.customModules && Array.isArray(state.customModules)) {
+        state.customModules.forEach(mod => {
+            CUSTOM_MODULES.push(mod);
+            // Render will handle SYSTEM_CONFIG registration
+            try {
+                renderCustomModuleToDOM(mod);
+            } catch (e) {
+                console.error("Failed to render custom module:", mod, e);
+            }
+        });
+    }
 
     if (state.pedalOrder) {
         activePedalChain = state.pedalOrder;
@@ -2959,9 +3146,613 @@ window.onload = function () {
     document.getElementById('loadPatchButton').addEventListener('click', () => document.getElementById('loadPatchInput').click());
     document.getElementById('loadPatchInput').addEventListener('change', loadPatchFromFile);
 
+    // Global click handler to blur custom label/name inputs when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        // Check if click is NOT on a custom input field
+        if (!target.classList.contains('custom-knob-label') &&
+            !target.classList.contains('custom-jack-label') &&
+            !target.classList.contains('custom-module-title')) {
+            // Blur any focused custom inputs
+            const focusedInput = document.activeElement;
+            if (focusedInput && (
+                focusedInput.classList.contains('custom-knob-label') ||
+                focusedInput.classList.contains('custom-jack-label') ||
+                focusedInput.classList.contains('custom-module-title')
+            )) {
+                focusedInput.blur();
+            }
+        }
+    });
+
     // TAPE INIT FIX
     if (typeof TAPE !== 'undefined' && !TAPE.gains) {
         TAPE.gains = [1.0, 1.0, 1.0, 1.0];
         console.log("Fixed: TAPE.gains initialized");
     }
 };
+// =========================================================================
+// EXTERNAL GEAR LOGIC
+// =========================================================================
+
+function initExternalGearUI() {
+    const btn = document.getElementById('addGearBtn');
+    const modal = document.getElementById('gearModal');
+    const closeBtn = document.getElementById('closeGearModal');
+    const confirmBtn = document.getElementById('addGearConfirm');
+
+    if (!btn || !modal) return;
+
+    // Open Modal
+    btn.addEventListener('click', () => {
+        modal.classList.add('visible');
+    });
+
+    // Close Modal
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('visible');
+    });
+
+    // Confirm Add
+    confirmBtn.addEventListener('click', () => {
+        const name = document.getElementById('gearName').value || "Module";
+        const inputs = parseInt(document.getElementById('gearInputs').value) || 0;
+        const outputs = parseInt(document.getElementById('gearOutputs').value) || 0;
+        const knobs = parseInt(document.getElementById('gearKnobs').value) || 0;
+        // No Labels input anymore
+
+        addCustomModule({ name, inputs, outputs, knobs });
+        modal.classList.remove('visible');
+    });
+}
+
+// renderColorPicker removed
+
+function addCustomModule(config) {
+    const idBase = config.name.replace(/[^a-zA-Z0-9]/g, '');
+    const moduleUUID = "ext_" + idBase + "_" + Date.now();
+
+    // 1. Register in CUSTOM_MODULES
+    const moduleDef = {
+        id: moduleUUID,
+        config: config
+    };
+    CUSTOM_MODULES.push(moduleDef);
+
+    // 2. Add to SYSTEM_CONFIG & Render
+    renderCustomModuleToDOM(moduleDef);
+
+    // 3. Save State implicitly
+    showMessage("Added " + config.name, "success");
+}
+
+function renderCustomModuleToDOM(moduleDef) {
+    const id = moduleDef.id;
+    const config = moduleDef.config;
+    const name = config.name;
+    const inputs = config.inputs;
+    const outputs = config.outputs;
+    const knobs = config.knobs || 0;
+    const knobLabels = config.labels || [];
+    // Color logic removed in favor of CSS theme
+
+    // Determine position (default to right)
+    const position = config.position || 'right';
+    const rackId = position === 'left' ? 'externalGearRackLeft' : 'externalGearRackRight';
+
+    // Create or get Container
+    let sidecar = document.getElementById(rackId);
+    if (!sidecar) {
+        sidecar = document.createElement('div');
+        sidecar.id = rackId;
+        sidecar.style.position = 'absolute';
+        sidecar.style.top = '0';
+        sidecar.style.display = 'flex';
+        sidecar.style.flexDirection = 'column';
+        sidecar.style.gap = '20px';
+
+        if (position === 'left') {
+            sidecar.style.right = '102%'; // Position to the left
+        } else {
+            sidecar.style.left = '102%'; // Position to the right
+        }
+
+        document.getElementById('synthContainer').appendChild(sidecar);
+    }
+
+    const modEl = document.createElement('div');
+    modEl.className = 'external-module';
+    modEl.id = id;
+
+    // Style adjustments for Theme and Dynamic Width
+    modEl.style.padding = '15px'; // Reduced from 25px
+    modEl.style.borderRadius = '8px';
+    modEl.style.minWidth = '280px'; // Reduced from 320px
+    modEl.style.width = 'fit-content';
+    modEl.style.border = '2px solid rgba(255,255,255,0.2)';
+    modEl.style.position = 'relative';
+    modEl.style.boxShadow = 'none';
+    modEl.style.display = 'flex';
+    modEl.style.flexDirection = 'column';
+    modEl.style.gap = '15px'; // Reduced from 25px
+
+    // Theme Colors
+    modEl.style.backgroundColor = 'var(--panel-bg)';
+    modEl.style.color = 'var(--text-main)';
+    modEl.style.borderColor = 'var(--toolbar-border)';
+
+    // Header Container (Title + Close)
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.marginBottom = '5px'; // Reduced from 10px
+    header.style.padding = '0 5px';
+    header.style.position = 'relative';
+    header.style.minHeight = '32px';
+
+    const title = document.createElement('input');
+    title.type = 'text';
+    title.value = name;
+    title.className = 'custom-module-title';
+    title.style.margin = '0 auto';
+    title.style.fontSize = '16px'; // Reduced from 20px
+    title.style.color = 'inherit';
+    title.style.textTransform = 'uppercase';
+    title.style.fontFamily = 'monospace';
+    title.style.letterSpacing = '1px';
+    title.style.fontWeight = 'bold';
+    title.style.whiteSpace = 'nowrap';
+    title.style.paddingRight = '35px'; // Space for delete button
+    title.style.paddingLeft = '10px';
+    title.style.background = 'transparent';
+    title.style.border = '1px solid transparent';
+    title.style.textAlign = 'center';
+    title.style.outline = 'none';
+    title.style.cursor = 'text';
+
+    title.addEventListener('mousedown', (e) => e.stopPropagation());
+    title.addEventListener('focus', () => {
+        title.style.borderBottom = '1px solid var(--text-main)';
+    });
+    title.addEventListener('blur', () => {
+        title.style.borderBottom = '1px solid transparent';
+    });
+    title.addEventListener('change', (e) => {
+        const newName = e.target.value || 'Module';
+        const mod = CUSTOM_MODULES.find(m => m.id === id);
+        if (mod) {
+            mod.config.name = newName;
+            saveState();
+        }
+    });
+
+    // Controls Container (Left side)
+    const leftControls = document.createElement('div');
+    leftControls.style.display = 'flex';
+    leftControls.style.gap = '8px';
+    leftControls.style.position = 'absolute';
+    leftControls.style.left = '0';
+    leftControls.style.top = '50%';
+    leftControls.style.transform = 'translateY(-50%)';
+
+    // Position Toggle Button (L/R)
+    const posBtn = document.createElement('div');
+    const currentPos = config.position || 'right';
+    posBtn.textContent = currentPos === 'left' ? 'L' : 'R';
+    posBtn.title = 'Toggle Left/Right';
+    posBtn.style.color = 'var(--text-muted)';
+    posBtn.style.fontSize = '14px';
+    posBtn.style.cursor = 'pointer';
+    posBtn.style.fontWeight = 'bold';
+    posBtn.style.padding = '2px 6px';
+    posBtn.style.border = '1px solid var(--text-muted)';
+    posBtn.style.borderRadius = '3px';
+    posBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mod = CUSTOM_MODULES.find(m => m.id === id);
+        if (mod) {
+            mod.config.position = mod.config.position === 'left' ? 'right' : 'left';
+            rerenderGearRacks();
+            saveState();
+        }
+    });
+    posBtn.addEventListener('mouseenter', () => posBtn.style.borderColor = 'var(--text-main)');
+    posBtn.addEventListener('mouseleave', () => posBtn.style.borderColor = 'var(--text-muted)');
+
+    // Up Arrow
+    const upBtn = document.createElement('div');
+    upBtn.textContent = '↑';
+    upBtn.title = 'Move Up';
+    upBtn.style.color = 'var(--text-muted)';
+    upBtn.style.fontSize = '18px';
+    upBtn.style.cursor = 'pointer';
+    upBtn.style.lineHeight = '1';
+    upBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveModuleUp(id);
+    });
+    upBtn.addEventListener('mouseenter', () => upBtn.style.color = 'var(--text-main)');
+    upBtn.addEventListener('mouseleave', () => upBtn.style.color = 'var(--text-muted)');
+
+    // Down Arrow
+    const downBtn = document.createElement('div');
+    downBtn.textContent = '↓';
+    downBtn.title = 'Move Down';
+    downBtn.style.color = 'var(--text-muted)';
+    downBtn.style.fontSize = '18px';
+    downBtn.style.cursor = 'pointer';
+    downBtn.style.lineHeight = '1';
+    downBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveModuleDown(id);
+    });
+    downBtn.addEventListener('mouseenter', () => downBtn.style.color = 'var(--text-main)');
+    downBtn.addEventListener('mouseleave', () => downBtn.style.color = 'var(--text-muted)');
+
+    leftControls.appendChild(posBtn);
+    leftControls.appendChild(upBtn);
+    leftControls.appendChild(downBtn);
+
+    // Delete Button (X) - Right side
+    const deleteBtn = document.createElement('div');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.color = 'var(--text-muted)';
+    deleteBtn.style.fontSize = '28px';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.style.fontWeight = 'bold';
+    deleteBtn.style.lineHeight = '0.5';
+    deleteBtn.title = "Remove Module";
+    deleteBtn.style.position = 'absolute';
+    deleteBtn.style.right = '0';
+    deleteBtn.style.top = '50%';
+    deleteBtn.style.transform = 'translateY(-50%)';
+
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Remove ${name}?`)) {
+            removeCustomModule(id);
+        }
+    });
+    deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.color = '#ef4444');
+    deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.color = 'var(--text-muted)');
+
+    header.appendChild(leftControls);
+    header.appendChild(title);
+    header.appendChild(deleteBtn);
+    modEl.appendChild(header);
+
+    // Controls Container (Knobs) - Use Grid for alignment
+    if (knobs > 0) {
+        const knobContainer = document.createElement('div');
+        knobContainer.style.display = 'grid';
+        knobContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        knobContainer.style.gap = '12px'; // Reduced from 20px
+        knobContainer.style.justifyItems = 'center';
+        knobContainer.style.alignItems = 'start';
+        knobContainer.style.marginBottom = '5px'; // Reduced from 10px
+        knobContainer.style.padding = '10px'; // Reduced from 15px
+        knobContainer.style.borderRadius = '6px';
+
+        for (let i = 0; i < knobs; i++) {
+            const knobId = `${id}_knob_${i}`;
+            const currentLabel = config.knobLabels && config.knobLabels[knobId] ? config.knobLabels[knobId] : `P${i + 1}`;
+
+            if (!SYSTEM_CONFIG[knobId]) {
+                SYSTEM_CONFIG[knobId] = { type: 'knob-small', x: '0', y: '0', label: currentLabel, isCustom: true, defValue: 0 };
+            }
+            if (!componentStates[knobId]) {
+                componentStates[knobId] = { type: 'knob-small', value: 0, isTouched: false };
+            }
+
+            const knobWrapper = createCustomKnob(knobId, currentLabel, moduleDef);
+            knobContainer.appendChild(knobWrapper);
+        }
+        modEl.appendChild(knobContainer);
+    }
+
+    // Jacks Container - Improved Layout with Grid
+
+    if (inputs > 0) {
+        const inContainer = document.createElement('div');
+        inContainer.style.display = 'grid';
+        inContainer.style.gridTemplateColumns = 'repeat(4, 1fr)'; // 4 Per Row
+        inContainer.style.gap = '20px';
+        inContainer.style.justifyItems = 'center';
+        inContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
+        inContainer.style.paddingTop = '15px';
+
+        for (let i = 0; i < inputs; i++) {
+            const jackId = `${id}_in_${i}`;
+            const currentLabel = config.jackLabels && config.jackLabels[jackId] ? config.jackLabels[jackId] : `In ${i + 1}`;
+            SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
+            const jack = createCustomJack(jackId, currentLabel, moduleDef);
+            inContainer.appendChild(jack);
+        }
+        modEl.appendChild(inContainer);
+    }
+
+    if (outputs > 0) {
+        const outContainer = document.createElement('div');
+        outContainer.style.display = 'grid';
+        outContainer.style.gridTemplateColumns = 'repeat(4, 1fr)'; // 4 Per Row
+        outContainer.style.gap = '20px';
+        outContainer.style.justifyItems = 'center';
+
+        if (inputs > 0) {
+            // Spacing handled by parent gap
+        } else {
+            outContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
+            outContainer.style.paddingTop = '15px';
+        }
+
+        for (let i = 0; i < outputs; i++) {
+            const jackId = `${id}_out_${i}`;
+            const currentLabel = config.jackLabels && config.jackLabels[jackId] ? config.jackLabels[jackId] : `Out ${i + 1}`;
+            SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
+            const jack = createCustomJack(jackId, currentLabel, moduleDef);
+            outContainer.appendChild(jack);
+        }
+        modEl.appendChild(outContainer);
+    }
+
+    sidecar.appendChild(modEl);
+}
+
+function removeCustomModule(moduleId) {
+    // 1. Remove from DOM
+    const el = document.getElementById(moduleId);
+    if (el) el.remove();
+
+    // 2. Remove from CUSTOM_MODULES
+    const idx = CUSTOM_MODULES.findIndex(m => m.id === moduleId);
+    if (idx > -1) {
+        const mod = CUSTOM_MODULES[idx];
+
+        // 3. Cleanup SYSTEM_CONFIG & Cables
+        // Jacks
+        for (let i = 0; i < (mod.config.inputs || 0); i++) {
+            const jId = `${moduleId}_in_${i}`;
+            delete SYSTEM_CONFIG[jId];
+            removeCablesConnectedTo(jId);
+        }
+        for (let i = 0; i < (mod.config.outputs || 0); i++) {
+            const jId = `${moduleId}_out_${i}`;
+            delete SYSTEM_CONFIG[jId];
+            removeCablesConnectedTo(jId);
+        }
+        // Knobs
+        for (let i = 0; i < (mod.config.knobs || 0); i++) {
+            const kId = `${moduleId}_knob_${i}`;
+            delete SYSTEM_CONFIG[kId];
+        }
+
+        CUSTOM_MODULES.splice(idx, 1);
+    }
+
+    redrawCables();
+    saveState();
+    showMessage("Module Removed", "info");
+}
+
+function removeCablesConnectedTo(jackId) {
+    const cablesToRemove = cableData.filter(c => c.start === jackId || c.end === jackId);
+    cablesToRemove.forEach(c => removeCable(c.start, c.end));
+}
+
+function moveModuleUp(moduleId) {
+    const idx = CUSTOM_MODULES.findIndex(m => m.id === moduleId);
+    if (idx > 0) {
+        [CUSTOM_MODULES[idx - 1], CUSTOM_MODULES[idx]] = [CUSTOM_MODULES[idx], CUSTOM_MODULES[idx - 1]];
+        rerenderGearRacks();
+        saveState();
+    }
+}
+
+function moveModuleDown(moduleId) {
+    const idx = CUSTOM_MODULES.findIndex(m => m.id === moduleId);
+    if (idx >= 0 && idx < CUSTOM_MODULES.length - 1) {
+        [CUSTOM_MODULES[idx], CUSTOM_MODULES[idx + 1]] = [CUSTOM_MODULES[idx + 1], CUSTOM_MODULES[idx]];
+        rerenderGearRacks();
+        saveState();
+    }
+}
+
+function rerenderGearRacks() {
+    // Clear both racks
+    const leftRack = document.getElementById('externalGearRackLeft');
+    const rightRack = document.getElementById('externalGearRackRight');
+    if (leftRack) leftRack.remove();
+    if (rightRack) rightRack.remove();
+
+    // Re-render all modules
+    CUSTOM_MODULES.forEach(mod => renderCustomModuleToDOM(mod));
+
+    // Redraw cables to update positions
+    redrawCables();
+}
+
+function createCustomKnob(id, label, moduleDef) {
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.width = '60px'; // Reduced from 80px
+
+    const el = document.createElement('div');
+    el.className = 'component knob-small';
+    el.id = id;
+    el.dataset.type = 'knob-small';
+    el.style.position = 'relative';
+    el.style.left = 'auto';
+    el.style.top = 'auto';
+
+    el.style.width = '32px'; // Reduced from 40px
+    el.style.height = '32px'; // Reduced from 40px
+    el.style.paddingBottom = '0';
+
+    el.style.zIndex = '200';
+
+    // Knob Visibility Fix
+    const knobBg = document.createElement('div');
+    knobBg.style.position = 'absolute';
+    knobBg.style.width = '28px'; // Adjusted from 36px
+    knobBg.style.height = '28px'; // Adjusted from 36px
+    knobBg.style.background = 'rgba(180,180,180,0.3)';
+    knobBg.style.borderRadius = '50%';
+    knobBg.style.top = '2px';
+    knobBg.style.left = '2px';
+    knobBg.style.pointerEvents = 'none';
+    el.appendChild(knobBg);
+
+    // Set Background Image
+    const isDark = document.body.classList.contains('dark-mode');
+    const imgUrl = isDark ? 'url("images/smallKnob_dark.svg")' : 'url("images/smallKnob.svg")';
+    el.style.backgroundImage = imgUrl;
+    el.style.backgroundSize = 'contain';
+    el.style.backgroundRepeat = 'no-repeat';
+    el.style.backgroundPosition = 'center center';
+
+    // Rotation logic
+    const state = componentStates[id] || { value: 0 };
+    let angle = state.value !== undefined ? state.value : -135;
+    el.style.setProperty('--angle', angle);
+    // Use calc to bind to the variable, overriding the translate(-50%, -50%) from .component
+    el.style.transform = `rotate(calc(var(--angle) * 1deg))`;
+
+    // Attach Interactivity - Use Global Handler
+    el.addEventListener('mousedown', startKnobDrag);
+    el.addEventListener('touchstart', startKnobDrag, { passive: false });
+    el.addEventListener('wheel', handleKnobWheel, { passive: false });
+
+    // Editable Label
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = label;
+    inp.className = 'custom-knob-label';
+    inp.style.fontSize = '14px'; // Increased from 12px
+    inp.style.color = 'var(--text-muted)';
+    inp.style.fontWeight = '600'; // Increased from 500
+    inp.style.marginTop = '6px'; // Reduced from 8px
+    inp.style.background = 'transparent';
+    inp.style.border = '1px solid transparent';
+    inp.style.textAlign = 'center';
+    inp.style.width = '100%';
+    inp.style.outline = 'none';
+    inp.style.padding = '2px';
+    inp.style.cursor = 'text';
+    inp.style.fontFamily = 'Helvetica, Arial, sans-serif';
+
+    inp.addEventListener('mousedown', (e) => e.stopPropagation());
+    inp.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
+
+    inp.addEventListener('focus', () => {
+        inp.style.borderBottom = '1px solid var(--text-main)';
+        inp.style.color = 'var(--text-main)';
+    });
+    inp.addEventListener('blur', () => {
+        inp.style.borderBottom = '1px solid transparent';
+        inp.style.color = 'var(--text-muted)';
+    });
+
+    inp.addEventListener('change', (e) => {
+        const newLabel = e.target.value;
+        if (SYSTEM_CONFIG[id]) SYSTEM_CONFIG[id].label = newLabel;
+        const mod = CUSTOM_MODULES.find(m => m.id === moduleDef.id);
+        if (mod) {
+            if (!mod.config.knobLabels) mod.config.knobLabels = {};
+            mod.config.knobLabels[id] = newLabel;
+            saveState();
+        }
+    });
+
+    wrapper.appendChild(el);
+    wrapper.appendChild(inp);
+    return wrapper;
+}
+
+function createCustomJack(id, label, moduleDef) {
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.width = '60px'; // Reduced from 80px
+
+    const el = document.createElement('div');
+    el.className = 'component jack';
+    el.id = id;
+    el.style.position = 'relative';
+    el.style.left = 'auto';
+    el.style.top = 'auto';
+    el.style.zIndex = '200';
+    el.setAttribute('data-type', 'jack');
+
+    el.style.width = '28px'; // Reduced from 32px
+    el.style.height = '28px'; // Reduced from 32px
+    el.style.paddingBottom = '0';
+
+    // Fix Centering: Remove the translate(-50%, -50%) from .jack/.component classes
+    el.style.transform = 'none';
+
+    el.addEventListener('click', handleJackClick);
+    el.addEventListener('mousedown', handleJackMouseDown);
+    el.addEventListener('touchstart', handleJackMouseDown, { passive: false });
+
+    el.addEventListener('dblclick', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const cablesToRemove = cableData.filter(c => c.start === id || c.end === id);
+        if (cablesToRemove.length > 0) {
+            cablesToRemove.forEach(c => removeCable(c.start, c.end));
+            redrawCables(); saveState();
+            triggerHandlingNoise();
+        }
+    });
+
+    // Editable Label
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = label;
+    inp.className = 'custom-jack-label';
+    inp.style.fontSize = '14px'; // Increased from 12px
+    inp.style.color = 'var(--text-muted)';
+    inp.style.fontWeight = '600'; // Increased from 500
+    inp.style.marginTop = '6px'; // Reduced from 8px
+    inp.style.background = 'transparent';
+    inp.style.border = '1px solid transparent';
+    inp.style.textAlign = 'center'; // Center text
+    inp.style.width = '100%';
+    inp.style.outline = 'none';
+    inp.style.padding = '2px';
+    inp.style.cursor = 'text';
+    inp.style.fontFamily = 'Helvetica, Arial, sans-serif';
+
+    inp.addEventListener('mousedown', (e) => e.stopPropagation());
+    inp.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
+
+    inp.addEventListener('focus', () => {
+        inp.style.borderBottom = '1px solid var(--text-main)';
+        inp.style.color = 'var(--text-main)';
+    });
+    inp.addEventListener('blur', () => {
+        inp.style.borderBottom = '1px solid transparent';
+        inp.style.color = 'var(--text-muted)';
+    });
+
+    inp.addEventListener('change', (e) => {
+        const newLabel = e.target.value;
+        // 1. Update SYSTEM_CONFIG
+        if (SYSTEM_CONFIG[id]) SYSTEM_CONFIG[id].label = newLabel;
+
+        // 2. Update Persisted Module Definition
+        const mod = CUSTOM_MODULES.find(m => m.id === moduleDef.id);
+        if (mod) {
+            if (!mod.config.jackLabels) mod.config.jackLabels = {};
+            mod.config.jackLabels[id] = newLabel;
+            saveState();
+        }
+    });
+
+    wrapper.appendChild(el);
+    wrapper.appendChild(inp);
+    return wrapper;
+}

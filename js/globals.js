@@ -11,26 +11,26 @@ const SYSTEM_CONFIG = {
     "knob-small-x": { type: "knob-small", x: "3.25%", y: "32.50%", label: "X", short: "KX", defValue: 0 },
     "knob-large-computer": { type: "knob-large", x: "9.44%", y: "15.28%", label: "Main", short: "KC", defValue: 0 },
     "knob-small-y": { type: "knob-small", x: "9.50%", y: "32.50%", label: "Y", short: "KY", defValue: 0 },
-    
+
     "knob-small-osc1fine": { type: "knob-small", x: "22.64%", y: "32.50%", label: "Osc 1 - Fine", short: "KF1" },
     "knob-large-osc1": { type: "knob-large", x: "28.55%", y: "15.28%", label: "Osc 1 - Freq", short: "KO1" },
     "knob-small-osc1fm": { type: "knob-small", x: "34.14%", y: "32.65%", label: "Osc 1 - FM", short: "KFM1", defValue: -150 },
-    
+
     "knob-small-osc2fine": { type: "knob-small", x: "22.64%", y: "70.45%", label: "Osc 2 - Fine", short: "KF2" },
     "knob-large-osc2": { type: "knob-large", x: "28.40%", y: "87.75%", label: "Osc 2 - Freq", short: "KO2" },
     "knob-small-osc2fm": { type: "knob-small", x: "34.14%", y: "70.45%", label: "Osc 2 - FM", short: "KFM2", defValue: -150 },
 
-    "knob-medium-slopes1": { type: "knob-medium", x: "78.87%", y: "13.20%", label: "Slopes 1 - Time", short: "KMS1" }, 
-    "knob-medium-slopes2": { type: "knob-medium", x: "78.74%", y: "89.30%", label: "Slopes 2 - Time", short: "KMS2" }, 
-    
+    "knob-medium-slopes1": { type: "knob-medium", x: "78.87%", y: "13.20%", label: "Slopes 1 - Time", short: "KMS1" },
+    "knob-medium-slopes2": { type: "knob-medium", x: "78.74%", y: "89.30%", label: "Slopes 2 - Time", short: "KMS2" },
+
     "knob-small-filter1fm": { type: "knob-small", x: "60.12%", y: "32.50%", label: "Filter 1 - FM", short: "KFF1", defValue: -150 },
     "knob-large-filter1": { type: "knob-large", x: "66.35%", y: "15.28%", label: "Filter 1 - Cutoff", short: "KLF1", defValue: -150 },
     "knob-small-filter1res": { type: "knob-small", x: "72.55%", y: "32.50%", label: "Filter 1 - Res", short: "KFR1", defValue: -150 },
     "knob-small-filter2fm": { type: "knob-small", x: "60.12%", y: "70.45%", label: "Filter 2 - FM", short: "KFF2", defValue: -150 },
     "knob-large-filter2": { type: "knob-large", x: "66.35%", y: "87.75%", label: "Filter 2 - Cutoff", short: "KLF2", defValue: -150 },
     "knob-small-filter2res": { type: "knob-small", x: "72.52%", y: "70.45%", label: "Filter 2 - Res", short: "KFR2", defValue: -150 },
-    
-    "knob-medium-amp": { type: "knob-medium", x: "51.35%", y: "16.75%", label: "Amp - Gain/Drive", short: "KMA", defValue: -150 }, 
+
+    "knob-medium-amp": { type: "knob-medium", x: "51.35%", y: "16.75%", label: "Amp - Gain/Drive", short: "KMA", defValue: -150 },
 
     "knob-small-voltagesBlend": { type: "knob-small", x: "52.26%", y: "67.50%", label: "Blend", short: "KVB" },
 
@@ -114,17 +114,17 @@ const SYSTEM_CONFIG = {
     "switch-3way-slopes2shape": { type: "switch-3way", x: "77.90%", y: "78.25%", label: "S2 Shape", short: "SS2s" },
     "switch-3way-slopes1loop": { type: "switch-3way", x: "83.25%", y: "24.60%", label: "S1 Mode", short: "SL1l" },
     "switch-3way-slopes2loop": { type: "switch-3way", x: "83.25%", y: "78.25%", label: "S2 Mode", short: "SL2l" },
-    
+
     // --- BUTTONS ---
     "button-1": { type: "button", x: "50.3%", y: "79.6%", label: "Button 1", short: "B1" },
     "button-3": { type: "button", x: "50.3%", y: "89.1%", label: "Button 3", short: "B3" },
     "button-2": { type: "button", x: "55.9%", y: "79.6%", label: "Button 2", short: "B2" },
     "button-4": { type: "button", x: "55.9%", y: "89.1%", label: "Button 4", short: "B4" },
-    
+
     // --- LEDS ---
     "led-amp-1": { type: "led", x: "49.9%", y: "10.5%", label: "Amp Lvl 1" },
     "led-amp-2": { type: "led", x: "52.4%", y: "10.13%", label: "Amp Lvl 2" },
-    "led-amp-3": { type: "led", x: "54.3%", y: "11.9%", label: "Amp Lvl 3" }, 
+    "led-amp-3": { type: "led", x: "54.3%", y: "11.9%", label: "Amp Lvl 3" },
     "led-amp-4": { type: "led", x: "55.2%", y: "15.3%", label: "Amp Lvl 4" },
 
     "led-comp-0": { type: "led", x: "1.4%", y: "84.8%", label: "Comp 0" },
@@ -143,86 +143,89 @@ const SYSTEM_CONFIG = {
 
 const REVERSE_ID_MAP = {}; for (const [id, config] of Object.entries(SYSTEM_CONFIG)) REVERSE_ID_MAP[config.short] = id;
 
+// --- CUSTOM MODULES REGISTRY ---
+let CUSTOM_MODULES = [];
+
 const MODULES_MAP = [
-    { 
-        id: 'Computer', 
-        inputs: ['jack-audio1in','jack-audio2in','jack-cv1in','jack-cv2in','jack-pulse1in','jack-pulse2in'], 
-        outputs: ['jack-audio1out','jack-audio2out','jack-cv1out','jack-cv2out','jack-pulse1out','jack-pulse2out'],
-        controls: ['knob-small-x', 'knob-large-computer', 'knob-small-y', 'switch-3way-computer'] 
+    {
+        id: 'Computer',
+        inputs: ['jack-audio1in', 'jack-audio2in', 'jack-cv1in', 'jack-cv2in', 'jack-pulse1in', 'jack-pulse2in'],
+        outputs: ['jack-audio1out', 'jack-audio2out', 'jack-cv1out', 'jack-cv2out', 'jack-pulse1out', 'jack-pulse2out'],
+        controls: ['knob-small-x', 'knob-large-computer', 'knob-small-y', 'switch-3way-computer']
     },
-    { 
-        id: 'Osc1', 
-        inputs: ['jack-osc1pitchIn','jack-osc1fmIn'], 
-        outputs: ['jack-osc1sqrOut','jack-osc1sinOut'], 
-        controls: ['knob-small-osc1fine', 'knob-large-osc1', 'knob-small-osc1fm'] 
+    {
+        id: 'Osc1',
+        inputs: ['jack-osc1pitchIn', 'jack-osc1fmIn'],
+        outputs: ['jack-osc1sqrOut', 'jack-osc1sinOut'],
+        controls: ['knob-small-osc1fine', 'knob-large-osc1', 'knob-small-osc1fm']
     },
-    { 
-        id: 'Osc2', 
-        inputs: ['jack-osc2pitchIn','jack-osc2fmIn'], 
-        outputs: ['jack-osc2sqrOut','jack-osc2sinOut'], 
-        controls: ['knob-small-osc2fine', 'knob-large-osc2', 'knob-small-osc2fm'] 
+    {
+        id: 'Osc2',
+        inputs: ['jack-osc2pitchIn', 'jack-osc2fmIn'],
+        outputs: ['jack-osc2sqrOut', 'jack-osc2sinOut'],
+        controls: ['knob-small-osc2fine', 'knob-large-osc2', 'knob-small-osc2fm']
     },
-    { 
-        id: 'StereoIn', 
+    {
+        id: 'StereoIn',
         inputs: [], // It's a source, no inputs
-        outputs: ['jack-stereoIn1Out','jack-stereoIn2Out'], 
-        controls: [] 
+        outputs: ['jack-stereoIn1Out', 'jack-stereoIn2Out'],
+        controls: []
     },
-    { 
-        id: 'RingMod', 
-        inputs: ['jack-ring1in','jack-ring2in'], 
-        outputs: ['jack-ringOut'], 
-        controls: [] 
+    {
+        id: 'RingMod',
+        inputs: ['jack-ring1in', 'jack-ring2in'],
+        outputs: ['jack-ringOut'],
+        controls: []
     },
-    { 
-        id: 'Stomp', 
-        inputs: ['jack-stompIn','jack-stompReturn'], 
-        outputs: ['jack-stompOut','jack-stomnpSend'], 
-        controls: ['knob-small-stompBlend', 'knob-small-stompFeedback'] 
+    {
+        id: 'Stomp',
+        inputs: ['jack-stompIn', 'jack-stompReturn'],
+        outputs: ['jack-stompOut', 'jack-stomnpSend'],
+        controls: ['knob-small-stompBlend', 'knob-small-stompFeedback']
     },
-    { 
-        id: 'Amp', 
-        inputs: ['jack-ampIn'], 
-        outputs: ['jack-ampOut'], 
-        controls: ['knob-medium-amp', 'switch-2way-amp'] 
+    {
+        id: 'Amp',
+        inputs: ['jack-ampIn'],
+        outputs: ['jack-ampOut'],
+        controls: ['knob-medium-amp', 'switch-2way-amp']
     },
-    { 
-        id: 'Voltages', 
-        inputs: [], 
-        outputs: ['jack-volt1Out','jack-volt2Out','jack-volt3Out','jack-volt4Out'], 
-        controls: ['knob-small-voltagesBlend', 'button-1', 'button-2', 'button-3', 'button-4'] 
+    {
+        id: 'Voltages',
+        inputs: [],
+        outputs: ['jack-volt1Out', 'jack-volt2Out', 'jack-volt3Out', 'jack-volt4Out'],
+        controls: ['knob-small-voltagesBlend', 'button-1', 'button-2', 'button-3', 'button-4']
     },
-    { 
-        id: 'Filter1', 
-        inputs: ['jack-filter1In','jack-filter1fmIn'], 
-        outputs: ['jack-filter1hpOut','jack-filter1lpOut'], 
-        controls: ['knob-small-filter1fm', 'knob-large-filter1', 'knob-small-filter1res', 'switch-2way-filter1hp'] 
+    {
+        id: 'Filter1',
+        inputs: ['jack-filter1In', 'jack-filter1fmIn'],
+        outputs: ['jack-filter1hpOut', 'jack-filter1lpOut'],
+        controls: ['knob-small-filter1fm', 'knob-large-filter1', 'knob-small-filter1res', 'switch-2way-filter1hp']
     },
-    { 
-        id: 'Filter2', 
-        inputs: ['jack-filter2In','jack-filter2fmIn'], 
-        outputs: ['jack-filter2hpOut','jack-filter2lpOut'], 
-        controls: ['knob-small-filter2fm', 'knob-large-filter2', 'knob-small-filter2res', 'switch-2way-filter2hp'] 
+    {
+        id: 'Filter2',
+        inputs: ['jack-filter2In', 'jack-filter2fmIn'],
+        outputs: ['jack-filter2hpOut', 'jack-filter2lpOut'],
+        controls: ['knob-small-filter2fm', 'knob-large-filter2', 'knob-small-filter2res', 'switch-2way-filter2hp']
     },
-    { 
-        id: 'Slopes1', 
-        inputs: ['jack-slopes1in','jack-slopes1cvIn'], 
-        outputs: ['jack-slopes1out'], 
-        controls: ['knob-medium-slopes1', 'switch-3way-slopes1shape', 'switch-3way-slopes1loop'] 
+    {
+        id: 'Slopes1',
+        inputs: ['jack-slopes1in', 'jack-slopes1cvIn'],
+        outputs: ['jack-slopes1out'],
+        controls: ['knob-medium-slopes1', 'switch-3way-slopes1shape', 'switch-3way-slopes1loop']
     },
-    { 
-        id: 'Slopes2', 
-        inputs: ['jack-slopes2in','jack-slopes2cvIn'], 
-        outputs: ['jack-slopes2out'], 
-        controls: ['knob-medium-slopes2', 'switch-3way-slopes2shape', 'switch-3way-slopes2loop'] 
+    {
+        id: 'Slopes2',
+        inputs: ['jack-slopes2in', 'jack-slopes2cvIn'],
+        outputs: ['jack-slopes2out'],
+        controls: ['knob-medium-slopes2', 'switch-3way-slopes2shape', 'switch-3way-slopes2loop']
     },
-    { 
-        id: 'Mixer', 
-        inputs: ['jack-mixer1in','jack-mixer3in','jack-mixer2in','jack-mixer4in'], 
-        outputs: ['jack-mixerLout','jack-mixerRout'], 
-        controls: ['knob-small-mix1', 'knob-small-mix2', 'knob-small-mix3', 'knob-small-mix4', 'knob-small-mix1pan', 'knob-small-mix2pan', 'knob-large-volumeMain'] 
+    {
+        id: 'Mixer',
+        inputs: ['jack-mixer1in', 'jack-mixer3in', 'jack-mixer2in', 'jack-mixer4in'],
+        outputs: ['jack-mixerLout', 'jack-mixerRout'],
+        controls: ['knob-small-mix1', 'knob-small-mix2', 'knob-small-mix3', 'knob-small-mix4', 'knob-small-mix1pan', 'knob-small-mix2pan', 'knob-large-volumeMain']
     }
-]; 
+];
 const AUDIO_SOURCES = ['Osc1', 'Osc2', 'StereoIn', 'Computer', 'Stomp', 'Amp', 'RingMod, Slopes1', 'Slopes2'];
 
 
@@ -230,40 +233,40 @@ const AUDIO_SOURCES = ['Osc1', 'Osc2', 'StereoIn', 'Computer', 'Stomp', 'Amp', '
 // --- PEDALBOARD LIBRARY ---
 
 const PEDAL_DEFINITIONS = {
-    dist: { 
-        name: 'Distortion', class: 'pedal-dist', 
+    dist: {
+        name: 'Distortion', class: 'pedal-dist',
         knobs: [
             { id: 'p_dist_drive', label: 'Drive', def: 0 },
             { id: 'p_dist_tone', label: 'Tone', def: 50 },
             { id: 'p_dist_level', label: 'Level', def: 0 }
         ]
     },
-    phaser: { 
-        name: 'Phaser', class: 'pedal-phaser', 
+    phaser: {
+        name: 'Phaser', class: 'pedal-phaser',
         knobs: [
             { id: 'p_phaser_rate', label: 'Rate', def: -50 },
             { id: 'p_phaser_depth', label: 'Depth', def: 50 },
             { id: 'p_phaser_mix', label: 'Mix', def: 0 }
         ]
     },
-    chorus: { 
-        name: 'Chorus', class: 'pedal-chorus', 
+    chorus: {
+        name: 'Chorus', class: 'pedal-chorus',
         knobs: [
             { id: 'p_chorus_rate', label: 'Rate', def: -50 },
             { id: 'p_chorus_depth', label: 'Depth', def: 0 },
             { id: 'p_chorus_mix', label: 'Mix', def: 0 }
         ]
     },
-    delay: { 
-        name: 'Delay', class: 'pedal-delay', 
+    delay: {
+        name: 'Delay', class: 'pedal-delay',
         knobs: [
             { id: 'p_delay_time', label: 'Time', def: 0 },
             { id: 'p_delay_fb', label: 'F.Back', def: -50 },
             { id: 'p_delay_mix', label: 'Mix', def: 0 }
         ]
     },
-    reverb: { 
-        name: 'Reverb', class: 'pedal-reverb', 
+    reverb: {
+        name: 'Reverb', class: 'pedal-reverb',
         knobs: [
             { id: 'p_rev_size', label: 'Size', def: 0 },
             { id: 'p_rev_mix', label: 'Mix', def: -50 }
@@ -369,7 +372,7 @@ var VIEWPORT = {
 let activePedalChain = ['reverb', 'delay', 'chorus', 'phaser', 'dist'];
 
 // Palette
-let isRandomColorMode = true; 
+let isRandomColorMode = true;
 let selectedCableColor = '#ef4444';
 let lastRandomColorIndex = -1;
 
@@ -427,9 +430,9 @@ let contextCable = null;
 let contextPedalId = null;
 
 // --- Audio / System State ---
-let micEnabled = false; 
-let midiEnabled = false; 
-let micSource = null; 
+let micEnabled = false;
+let midiEnabled = false;
+let micSource = null;
 let isBuildingAudioGraph = false;
 let isPerformanceMode = false;
 let smoothAmpLevel = 0;
@@ -437,7 +440,7 @@ let activeComputerCard = null;
 
 // --- Audio Context & Scope ---
 let audioCtx = null;
-let audioNodes = {}; 
+let audioNodes = {};
 let midiAccess = null;
 let selectedMidiInput = null;
 
@@ -451,14 +454,14 @@ let scopeFrozen = false;
 let isScopeRunning = false;
 
 // Circular Scope History
-const MAX_ROLL_HISTORY = 4096; 
+const MAX_ROLL_HISTORY = 4096;
 let rollingData1 = new Float32Array(MAX_ROLL_HISTORY).fill(0);
 let rollingData2 = new Float32Array(MAX_ROLL_HISTORY).fill(0);
-let rollHead = 0; 
+let rollHead = 0;
 
-let globalJackMap = {}; 
-let activeProbes = [null, null]; 
-let scopeProbes = { ch1: null, ch2: null }; 
+let globalJackMap = {};
+let activeProbes = [null, null];
+let scopeProbes = { ch1: null, ch2: null };
 let resizeObserver = null;
 
 let slopesWaves = { log: null, exp: null, bentTri: null };
@@ -486,11 +489,11 @@ function getCableByIds(s, e) {
 function getPos(id) {
     const el = document.getElementById(id);
     if (!el) return null;
-    
+
     const rect = el.getBoundingClientRect();
     const container = document.getElementById('synthContainer');
     if (!container) return null;
-    
+
     const contRect = container.getBoundingClientRect();
     // Use the global VIEWPORT.scale
     const currentScale = (typeof VIEWPORT !== 'undefined') ? VIEWPORT.scale : 1.0;
@@ -552,19 +555,19 @@ function getModuleIndexByJack(jackId) {
 
 // Initialize registry with the full static library
 // If CARD_LIBRARY isn't loaded yet, default to empty array
-window.AVAILABLE_CARDS = (typeof window.CARD_LIBRARY !== 'undefined') 
+window.AVAILABLE_CARDS = (typeof window.CARD_LIBRARY !== 'undefined')
     ? JSON.parse(JSON.stringify(window.CARD_LIBRARY)) // Deep copy
     : [];
 
 // Define the registration function
-window.registerCard = function(cardClass) {
+window.registerCard = function (cardClass) {
     if (!cardClass || !cardClass.meta) {
         console.warn("Attempted to register invalid card:", cardClass);
         return;
     }
 
     const id = cardClass.meta.id;
-    
+
     // Find the existing entry in our library
     const existingIndex = window.AVAILABLE_CARDS.findIndex(c => c.id === id);
 

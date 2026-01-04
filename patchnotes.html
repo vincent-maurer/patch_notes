@@ -1,105 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Patch Notes</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="min-h-screen">
 
-    <div id="mainContentWrapper"> 
-        
-        <div id="appHeader" style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 5px; margin-bottom: 2px; margin-top: 30px;">
-            <h1 style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">Workshop System Patch Notes</h1>
+    <div id="mainContentWrapper">
+
+        <div id="appHeader"
+            style="display: flex; justify-content: space-between; align-items: flex-end; padding: 0 5px; margin-bottom: 2px; margin-top: 30px;">
+            <h1
+                style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">
+                Workshop System Patch Notes</h1>
             <div style="font-size: 0.7rem; color: var(--text-muted);">v1.9</div>
         </div>
 
         <div id="mainToolbar">
             <button id="themeToggle" class="toolbar-btn" title="Toggle Theme">
-                <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
             </button>
             <button id="fullscreenToggle" class="toolbar-btn" title="Full Screen">
-                <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                    </path>
+                </svg>
             </button>
             <button id="perfToggle" class="toolbar-btn" title="Performance Mode">
-                <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
                 <span class="hidden sm:inline">Live</span>
             </button>
-            
+
             <div class="btn-group">
                 <button id="audioToggle" class="toolbar-btn" title="Audio">
-                    <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
                     <span class="hidden sm:inline">Audio</span>
                 </button>
                 <button id="micToggle" class="toolbar-btn" title="Mic">
-                    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
                 </button>
                 <button id="midiToggle" class="toolbar-btn" title="MIDI">
-                    <svg viewBox="0 0 24 24"><path d="M2 12h20"></path><path d="M6 12v4"></path><path d="M10 12v4"></path><path d="M14 12v4"></path><path d="M18 12v4"></path><rect x="2" y="6" width="20" height="12" rx="2"></rect></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2 12h20"></path>
+                        <path d="M6 12v4"></path>
+                        <path d="M10 12v4"></path>
+                        <path d="M14 12v4"></path>
+                        <path d="M18 12v4"></path>
+                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                    </svg>
                 </button>
             </div>
+
+
 
             <div class="btn-group">
                 <button id="pedalToggle" class="toolbar-btn" title="Toggle Pedalboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="2" width="18" height="18" rx="2.5" />
-                        <circle cx="12" cy="16" r="4" fill="currentColor" stroke="none"/>
-                        <circle cx="7" cy="6" r="2" fill="currentColor" stroke="none"/>
-                        <circle cx="12" cy="6" r="2" fill="currentColor" stroke="none"/>
-                        <circle cx="17" cy="6" r="2" fill="currentColor" stroke="none"/>
+                        <circle cx="12" cy="16" r="4" fill="currentColor" stroke="none" />
+                        <circle cx="7" cy="6" r="2" fill="currentColor" stroke="none" />
+                        <circle cx="12" cy="6" r="2" fill="currentColor" stroke="none" />
+                        <circle cx="17" cy="6" r="2" fill="currentColor" stroke="none" />
                     </svg>
                 </button>
                 <button id="scopeToggle" class="toolbar-btn" title="Scope">
-                    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
                 </button>
                 <button id="recorderToggle" class="toolbar-btn" title="Audio Recorder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="7" cy="12" r="5" />
-                        <circle cx="7" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                        
+                        <circle cx="7" cy="12" r="1.5" fill="currentColor" stroke="none" />
+
                         <circle cx="17" cy="12" r="5" />
-                        <circle cx="17" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-                        
+                        <circle cx="17" cy="12" r="1.5" fill="currentColor" stroke="none" />
+
                         <path d="M 12 10 L 16 10 L 16 14 L 12 14 L 12 10" stroke-width="0" fill="none" />
-                        <line x1="12" y1="12" x2="16" y2="12" stroke-width="1.5"/>
+                        <line x1="12" y1="12" x2="16" y2="12" stroke-width="1.5" />
                         <line x1="7" y1="12" x2="17" y2="12" stroke="none" stroke-width="1" />
-                        <line x1="7" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2" />
+                        <line x1="7" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1"
+                            stroke-dasharray="2 2" />
+                    </svg>
+                </button>
+
+                <button id="addGearBtn" class="toolbar-btn" title="Add External Gear">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
                 </button>
             </div>
-            
+
             <div class="color-picker-container">
                 <div id="activeColorSwatch" title="Cable Color (Click to change)" class="random-active"></div>
                 <div id="colorPaletteMenu"></div>
             </div>
 
             <button id="randomPatchButton" class="toolbar-btn" title="Generate Random Patch">
-                <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><circle cx="16" cy="8" r="2"></circle><circle cx="8" cy="16" r="2"></circle><circle cx="8" cy="8" r="2"></circle><circle cx="16" cy="16" r="2"></circle></svg>
+                <svg viewBox="0 0 24 24">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <circle cx="16" cy="8" r="2"></circle>
+                    <circle cx="8" cy="16" r="2"></circle>
+                    <circle cx="8" cy="8" r="2"></circle>
+                    <circle cx="16" cy="16" r="2"></circle>
+                </svg>
             </button>
 
             <input type="file" id="loadPatchInput" accept=".json,.png,.wav" style="display: none;" />
             <button id="loadPatchButton" class="toolbar-btn" title="Load Patch from File">
-                <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
             </button>
 
             <select id="presetsDropdown" class="themed-input preset-select">
                 <option>Library</option>
             </select>
-            
+
             <div class="btn-group">
                 <button id="savePresetButton" class="toolbar-btn" title="Save Preset">
-                    <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
                 </button>
                 <button id="deletePresetButton" class="toolbar-btn" title="Delete Preset">
-                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
                 </button>
-                
+
                 <button id="exportMenuToggle" class="toolbar-btn" title="Export Patch">
-                    <svg viewBox="0 0 24 24"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.219"></path><path d="M16 16l-4 4-4-4"></path><path d="M12 12v9"></path></svg>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.219"></path>
+                        <path d="M16 16l-4 4-4-4"></path>
+                        <path d="M12 12v9"></path>
+                    </svg>
                 </button>
                 <button id="clearButton" class="toolbar-btn" title="Clear All">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></button>
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg></button>
             </div>
         </div>
 
@@ -107,26 +172,33 @@
             <div class="export-option" data-action="savePngButton">PNG Image (Importable)</div>
             <div class="export-option" data-action="savePdfButton">PDF Document</div>
             <div class="export-option" data-action="shareUrlButton">Copy Shareable URL</div>
-            <div class="export-option" data-action="savePatchButton">JSON File  (Importable)</div>
+            <div class="export-option" data-action="savePatchButton">JSON File (Importable)</div>
+            <div class="export-option" data-action="saveGearButton">Save External Gear (JSON)</div>
+            <div class="export-option" data-action="loadGearButton">Load External Gear (JSON)</div>
         </div>
 
+        <input type="file" id="loadGearInput" accept=".json" style="display: none;" />
+
         <div id="patchNameContainer" class="w-full">
-            <input type="text" id="patchNameInput" class="themed-input w-full" placeholder="Untitled Patch" autocomplete="off">
+            <input type="text" id="patchNameInput" class="themed-input w-full" placeholder="Untitled Patch"
+                autocomplete="off">
         </div>
 
         <div class="synth-container" id="synthContainer">
             <svg class="cable-svg" id="cableLayer"></svg>
-            </div>
+        </div>
 
         <div id="pedalboard" class="w-full flex flex-wrap justify-center gap-4 rounded-lg"></div>
 
         <div id="virtualKeyboard"></div>
 
         <div id="notesContainer" class="themed-box w-full rounded-lg p-2 shadow-sm">
-            <textarea id="globalNotesArea" class="themed-input w-full" placeholder="Patch Notes / Instructions..."></textarea>
+            <textarea id="globalNotesArea" class="themed-input w-full"
+                placeholder="Patch Notes / Instructions..."></textarea>
         </div>
 
-    </div> <ul id="contextMenu">
+    </div>
+    <ul id="contextMenu">
         <li data-action="reset">Reset to Default</li>
         <li data-action="labelCable" data-type="cable" class="hidden">Add Label</li>
         <li data-action="removeCable" data-type="cable" class="hidden text-red">Remove Cable</li>
@@ -142,14 +214,18 @@
     <div id="messageBox"></div>
 
     <div id="scopeWindow" style="display: none; flex-direction: column;">
-        
-        <div id="scopeHeader" style="flex: 0 0 auto; background-color: #333; color: #fff; padding: 4px 8px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
+
+        <div id="scopeHeader"
+            style="flex: 0 0 auto; background-color: #333; color: #fff; padding: 4px 8px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
             <div style="display: flex; flex-direction: column; line-height: 1; overflow: hidden;">
-                <span style="font-size: 10px; color: #4ade80; font-weight: bold; white-space: nowrap;" id="scopeLabel1">CH1: Main</span>
-                <span style="font-size: 10px; color: #f472b6; font-weight: bold; white-space: nowrap;" id="scopeLabel2">CH2: Off</span>
+                <span style="font-size: 10px; color: #4ade80; font-weight: bold; white-space: nowrap;"
+                    id="scopeLabel1">CH1: Main</span>
+                <span style="font-size: 10px; color: #f472b6; font-weight: bold; white-space: nowrap;"
+                    id="scopeLabel2">CH2: Off</span>
             </div>
-            
-            <div style="flex-grow: 1; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 9px; font-family: monospace; color: #9ca3af; pointer-events: none;">
+
+            <div
+                style="flex-grow: 1; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 9px; font-family: monospace; color: #9ca3af; pointer-events: none;">
                 <span id="measVpp">Vpp: --</span>
                 <span id="measFreq">Hz: --</span>
             </div>
@@ -162,15 +238,23 @@
             </div>
         </div>
 
-        <div class="scope-body" style="flex: 1 1 auto; display: flex; flex-direction: row; min-height: 0; position: relative; background-color: #000; overflow: hidden;">
-            
-            <div style="flex: 0 0 32px; width: 32px; background-color: #1a1a1a; border-right: 1px solid #444; position: relative; z-index: 10;">
-                
-                <div style="position: absolute; top: 2px; left: 0; width: 100%; text-align: center; font-size: 8px; color: #666; font-weight: bold; pointer-events: none; z-index: 5;">T</div>
-                
-                <input type="range" id="scopeTrigger" class="vertical-range" min="-1" max="1" step="0.02" value="0" title="Trigger Level" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; z-index: 10;">
-                
-                <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background-color: #444; pointer-events: none; z-index: 1;"></div>
+        <div class="scope-body"
+            style="flex: 1 1 auto; display: flex; flex-direction: row; min-height: 0; position: relative; background-color: #000; overflow: hidden;">
+
+            <div
+                style="flex: 0 0 32px; width: 32px; background-color: #1a1a1a; border-right: 1px solid #444; position: relative; z-index: 10;">
+
+                <div
+                    style="position: absolute; top: 2px; left: 0; width: 100%; text-align: center; font-size: 8px; color: #666; font-weight: bold; pointer-events: none; z-index: 5;">
+                    T</div>
+
+                <input type="range" id="scopeTrigger" class="vertical-range" min="-1" max="1" step="0.02" value="0"
+                    title="Trigger Level"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; z-index: 10;">
+
+                <div
+                    style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background-color: #444; pointer-events: none; z-index: 1;">
+                </div>
             </div>
 
             <div style="flex: 1 1 auto; position: relative; min-width: 0; height: 100%;">
@@ -179,7 +263,8 @@
 
         </div>
 
-        <div id="scopeControls" style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px; background-color: #222; border-top: 1px solid #444;">
+        <div id="scopeControls"
+            style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px; background-color: #222; border-top: 1px solid #444;">
             <span class="scope-label" style="white-space: nowrap;">Time/Div</span>
             <input type="range" id="scopeTime" class="scope-range" min="0" max="100" value="50" style="flex-grow: 1;">
         </div>
@@ -189,7 +274,12 @@
     <div id="recorderWindow">
         <div id="recorderHeader">
             <div id="tapeSettingsBtn" class="tape-btn-settings" title="Options">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
             </div>
             <button id="tapeSourceToggle" class="tape-function-btn mode-mix" title="Source: Main Mix">MIX IN</button>
             <span class="tape-title">WORKSHOP 4-TRACK</span>
@@ -197,10 +287,10 @@
         </div>
 
         <div class="recorder-body">
-            
+
             <div id="tapeSettingsOverlay">
                 <div class="tape-overlay-title">TAPE CONFIG</div>
-                
+
                 <div class="tape-setting-row">
                     <span>Loop (Sec)</span>
                     <input type="number" id="tapeLoopLength" class="tape-input" value="30" min="1" max="60">
@@ -221,7 +311,7 @@
                     <button id="tapeExportStems" class="rec-btn btn-export">EXPORT STEMS (ZIP)</button>
                     <button id="tapeClearAll" class="rec-btn btn-erase">ERASE TAPE</button>
                 </div>
-                
+
                 <button id="tapeCloseSettings" class="rec-btn btn-close-menu">CLOSE MENU</button>
             </div>
 
@@ -240,19 +330,23 @@
             <div class="track-grid">
                 <div class="track-strip">
                     <button class="track-btn selected" data-track="0">TRK 1</button>
-                    <input type="range" class="mixer-fader" data-track="0" min="0" max="1.2" step="0.01" value="1.0" title="Gain">
+                    <input type="range" class="mixer-fader" data-track="0" min="0" max="1.2" step="0.01" value="1.0"
+                        title="Gain">
                 </div>
                 <div class="track-strip">
                     <button class="track-btn" data-track="1">TRK 2</button>
-                    <input type="range" class="mixer-fader" data-track="1" min="0" max="1.2" step="0.01" value="1.0" title="Gain">
+                    <input type="range" class="mixer-fader" data-track="1" min="0" max="1.2" step="0.01" value="1.0"
+                        title="Gain">
                 </div>
                 <div class="track-strip">
                     <button class="track-btn" data-track="2">TRK 3</button>
-                    <input type="range" class="mixer-fader" data-track="2" min="0" max="1.2" step="0.01" value="1.0" title="Gain">
+                    <input type="range" class="mixer-fader" data-track="2" min="0" max="1.2" step="0.01" value="1.0"
+                        title="Gain">
                 </div>
                 <div class="track-strip">
                     <button class="track-btn" data-track="3">TRK 4</button>
-                    <input type="range" class="mixer-fader" data-track="3" min="0" max="1.2" step="0.01" value="1.0" title="Gain">
+                    <input type="range" class="mixer-fader" data-track="3" min="0" max="1.2" step="0.01" value="1.0"
+                        title="Gain">
                 </div>
             </div>
 
@@ -267,16 +361,22 @@
                     <button id="tapeBtnRec" class="tape-btn tape-btn-rec" title="Record">●</button>
                     <button id="tapeBtnRTZ" class="tape-btn tape-btn-rtz" title="Return to Start">|&lt;</button>
                     <button id="tapeBtnRew" class="tape-btn" title="Rewind">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="11 19 2 12 11 5 11 19"></polygon>
+                            <polygon points="22 19 13 12 22 5 22 19"></polygon>
+                        </svg>
                     </button>
                     <button id="tapeBtnStop" class="tape-btn" title="Stop">■</button>
                     <button id="tapeBtnPlay" class="tape-btn tape-btn-play" title="Play">▶</button>
                     <button id="tapeBtnFwd" class="tape-btn" title="Fast Forward">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="13 19 22 12 13 5 13 19"></polygon>
+                            <polygon points="2 19 11 12 2 5 2 19"></polygon>
+                        </svg>
                     </button>
                     <button id="tapeBtnLoop" class="tape-btn tape-btn-loop active" title="Loop Mode">∞</button>
                 </div>
-                
+
                 <div class="transport-group">
                     <button id="tapeBtnClear" class="tape-btn btn-clear" title="Clear Track">✕</button>
                     <button id="tapeBtnSave" class="tape-btn" title="Export Mix">↓</button>
@@ -286,29 +386,63 @@
         </div>
     </div>
 
-  <script src="js/ext/lz-string.min.js"></script>
-  <script src="js/ext/dom-to-image.min.js"></script>
-  <script src="js/ext/jszip.min.js"></script>
-  <script src="js/cards/CardDefinitions.js"></script>
-  <script src="js/globals.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/cards/ComputerCard.js"></script> 
-  <script src="js/cards/CardReverb.js"></script>
-  <script src="js/cards/CardTuring.js"></script>
-  <script src="js/cards/CardMIDI.js"></script>
-  <script src="js/cards/CardCV.js"></script>
-  <script src="js/cards/CardDualDelay.js"></script>
-  <script src="js/cards/CardChord.js"></script>
-  <script src="js/cards/CardEuclidean.js"></script>
-  <script src="js/cards/CardVCA.js"></script>
-  <script src="js/cards/CardDrumLoop.js"></script>
-  <script src="js/cards/CardTwists.js"></script>
-  <script src="js/cards/CardNoOp.js"></script>
-  <script src="js/computer.js"></script>
-  <script src="js/tape.js"></script>
-  <script src="js/scope.js"></script>
-  <script src="js/audio-engine.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+    <!-- External Gear Modal -->
+    <div id="gearModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add External Gear</h2>
+                <button id="closeGearModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Module Name</label>
+                    <input type="text" id="gearName">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Inputs</label>
+                        <input type="number" id="gearInputs" value="2" min="0" max="8">
+                    </div>
+                    <div class="form-group">
+                        <label>Outputs</label>
+                        <input type="number" id="gearOutputs" value="2" min="0" max="8">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Knobs / Controls</label>
+                    <input type="number" id="gearKnobs" value="4" min="0" max="8">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="addGearConfirm" class="btn btn-primary">Add Module</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ext/lz-string.min.js"></script>
+    <script src="js/ext/dom-to-image.min.js"></script>
+    <script src="js/ext/jszip.min.js"></script>
+    <script src="js/cards/CardDefinitions.js"></script>
+    <script src="js/globals.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/cards/ComputerCard.js"></script>
+    <script src="js/cards/CardReverb.js"></script>
+    <script src="js/cards/CardTuring.js"></script>
+    <script src="js/cards/CardMIDI.js"></script>
+    <script src="js/cards/CardCV.js"></script>
+    <script src="js/cards/CardDualDelay.js"></script>
+    <script src="js/cards/CardChord.js"></script>
+    <script src="js/cards/CardEuclidean.js"></script>
+    <script src="js/cards/CardVCA.js"></script>
+    <script src="js/cards/CardDrumLoop.js"></script>
+    <script src="js/cards/CardTwists.js"></script>
+    <script src="js/cards/CardNoOp.js"></script>
+    <script src="js/computer.js"></script>
+    <script src="js/tape.js"></script>
+    <script src="js/scope.js"></script>
+    <script src="js/audio-engine.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
 </body>
+
 </html>

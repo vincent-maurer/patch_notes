@@ -42,19 +42,19 @@ function runClockLoop() {
         // Forces UI to check LFO state 60fps
         if (typeof updateSlopes === 'function') {
             updateSlopes(
-                'Slopes1', 
-                'knob-medium-slopes1', 
-                'switch-3way-slopes1shape', 
-                'switch-3way-slopes1loop', 
-                'led-slopes1-rise', 
+                'Slopes1',
+                'knob-medium-slopes1',
+                'switch-3way-slopes1shape',
+                'switch-3way-slopes1loop',
+                'led-slopes1-rise',
                 'led-slopes1-fall'
             );
             updateSlopes(
-                'Slopes2', 
-                'knob-medium-slopes2', 
-                'switch-3way-slopes2shape', 
-                'switch-3way-slopes2loop', 
-                'led-slopes2-rise', 
+                'Slopes2',
+                'knob-medium-slopes2',
+                'switch-3way-slopes2shape',
+                'switch-3way-slopes2loop',
+                'led-slopes2-rise',
                 'led-slopes2-fall'
             );
         }
@@ -120,9 +120,9 @@ function handleEscapeSequence(e) {
         // Clean up visual elements
         if (typeof currentDraggedCable !== 'undefined') currentDraggedCable = null;
         if (typeof disableGhostMode === 'function') disableGhostMode();
-        
+
         document.getElementById('tempCable')?.remove();
-        
+
         if (typeof currentCableStart !== 'undefined' && currentCableStart) {
             document.getElementById(currentCableStart)?.classList.remove('active');
             currentCableStart = null;
@@ -147,6 +147,11 @@ window.addEventListener('load', () => {
     // Initialize Virtual Keyboard if function exists
     if (typeof initVirtualKeyboard === 'function') {
         initVirtualKeyboard();
+    }
+
+    // Initialize External Gear UI
+    if (typeof initExternalGearUI === 'function') {
+        initExternalGearUI();
     }
 });
 
