@@ -147,9 +147,10 @@
 
             <!-- FILE / EXPORT / SHARE GROUP -->
             <div class="btn-group">
-                <input type="file" id="loadPatchInput" accept=".json,.png,.wav" style="display: none;" />
+                <input type="file" class="toolbar-btn" id="loadPatchInput" accept=".json,.png,.wav"
+                    style="display: none;" />
                 <button id="loadPatchButton" class="toolbar-btn" title="Load Patch from File">
-                    <svg viewBox="0 0 24 24">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                 </button>
@@ -247,8 +248,7 @@
 
     <div id="scopeWindow" style="display: none; flex-direction: column;">
 
-        <div id="scopeHeader"
-            style="flex: 0 0 auto; background-color: #333; color: #fff; padding: 4px 8px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
+        <div id="scopeHeader">
             <div style="display: flex; flex-direction: column; line-height: 1; overflow: hidden;">
                 <span style="font-size: 10px; color: #4ade80; font-weight: bold; white-space: nowrap;"
                     id="scopeLabel1">CH1: Main</span>
@@ -266,7 +266,7 @@
                 <button id="scopeSpec" class="scope-btn" title="Spectrum Analyzer (FFT)">SPEC</button>
                 <button id="scopeXY" class="scope-btn" title="Toggle X-Y Mode">XY</button>
                 <button id="scopeFreeze" class="scope-btn" title="Freeze">❄️</button>
-                <button id="closeScope" class="text-white hover:text-red-400 text-xs font-bold px-1 ml-1">✕</button>
+                <button id="closeScope" class="scope-close-btn">✕</button>
             </div>
         </div>
 

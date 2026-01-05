@@ -59,6 +59,18 @@
     --scope-trace: #4ade80;
     --scope-trace2: #f472b6;
     --scope-border: #444;
+
+    /* Windows (Scope, Tape, External Modules) */
+    --window-bg: #ffffff;
+    --window-header-bg: #f3f4f6;
+    --window-header-text: #374151;
+    --window-border: #d1d5db;
+    --window-control-bg: #f9fafb;
+    --window-control-border: #e5e7eb;
+    --window-close-hover: #ef4444;
+
+    /* General border color */
+    --border-color: #d1d5db;
 }
 
 body.dark-mode {
@@ -129,6 +141,18 @@ body.dark-mode {
 
     --note-color: #ffffff;
     --note-shadow: rgba(255, 255, 255, 0.1);
+
+    /* Windows (Scope, Tape, External Modules) - Dark Mode */
+    --window-bg: #1a1a1a;
+    --window-header-bg: #27272a;
+    --window-header-text: #a1a1aa;
+    --window-border: #3f3f46;
+    --window-control-bg: #18181b;
+    --window-control-border: #27272a;
+    --window-close-hover: #ef4444;
+
+    /* General border color */
+    --border-color: #3f3f46;
 }
 
 /* ==========================================================================
@@ -1528,8 +1552,8 @@ body.dark-mode .pedal-knob::after {
     height: 280px;
     min-width: 250px;
     min-height: 180px;
-    background-color: var(--scope-bg);
-    border: 2px solid var(--scope-border);
+    background-color: var(--window-bg);
+    border: 2px solid var(--window-border);
     border-radius: 6px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     z-index: 2000;
@@ -1541,16 +1565,16 @@ body.dark-mode .pedal-knob::after {
 
 #scopeHeader {
     flex: 0 0 auto;
-    background-color: #333;
-    color: #fff;
-    padding: 4px 8px;
+    background-color: var(--window-header-bg);
+    color: var(--window-header-text);
+    padding: 8px 12px;
     font-size: 0.8rem;
-    font-weight: bold;
+    font-weight: 600;
     cursor: move;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--window-control-border);
 }
 
 .scope-body {
@@ -1571,16 +1595,16 @@ body.dark-mode .pedal-knob::after {
 
 #scopeControls {
     flex: 0 0 auto;
-    padding: 4px;
+    padding: 6px 8px;
     display: flex;
     gap: 8px;
     align-items: center;
-    background: #222;
-    border-top: 1px solid #444;
+    background: var(--window-control-bg);
+    border-top: 1px solid var(--window-control-border);
 }
 
 .scope-label {
-    color: #888;
+    color: var(--text-muted);
     font-size: 0.7rem;
     font-family: monospace;
 }
@@ -1591,9 +1615,9 @@ body.dark-mode .pedal-knob::after {
 }
 
 .scope-btn {
-    background: transparent;
-    border: 1px solid #555;
-    color: #aaa;
+    background: var(--button-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-muted);
     font-size: 10px;
     padding: 2px 6px;
     cursor: pointer;
@@ -1601,8 +1625,8 @@ body.dark-mode .pedal-knob::after {
 }
 
 .scope-btn:hover {
-    background: #333;
-    color: #fff;
+    background: var(--button-hover);
+    color: var(--text-main);
 }
 
 .scope-btn.active-mode {
@@ -1646,11 +1670,10 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     width: 450px !important;
     height: 450px !important;
     resize: none;
-    background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
-    border: 1px solid #444;
-    border-top: 1px solid #555;
+    background: var(--window-bg);
+    border: 2px solid var(--window-border);
     border-radius: 6px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     z-index: 2000;
     display: none;
     flex-direction: column;
@@ -1659,25 +1682,24 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 
 #recorderHeader {
     flex: 0 0 auto;
-    background-color: #111;
-    color: #888;
-    padding: 6px 12px;
-    font-size: 0.7rem;
-    font-weight: 900;
+    background-color: var(--window-header-bg);
+    color: var(--window-header-text);
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: move;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #000;
-    height: 7%;
+    border-bottom: 1px solid var(--window-control-border);
 }
 
 /* Close Button (X) */
 #closeRecorder {
     background: transparent;
     border: none;
-    color: #e5e5e5;
-    font-size: 14px;
+    color: var(--window-header-text);
+    font-size: 18px;
     font-weight: bold;
     cursor: pointer;
     padding: 0 5px;
@@ -1687,8 +1709,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 #closeRecorder:hover {
-    color: #ef4444;
-    /* Red hover glow */
+    color: var(--window-close-hover);
     text-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
 }
 
@@ -1709,10 +1730,10 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     align-items: center;
     justify-content: center;
     gap: 20%;
-    background: #151515;
+    background: var(--window-control-bg);
     border-radius: 4px;
-    border: 1px solid #000;
-    box-shadow: inset 0 0 20px #000;
+    border: 1px solid var(--window-control-border);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
     position: relative;
     overflow: hidden;
     min-height: 120px;
@@ -1751,10 +1772,10 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     transform: translateX(-50%);
     width: 80px;
     height: 40px;
-    background: linear-gradient(to bottom, #333, #111);
-    border-top: 1px solid #555;
+    background: var(--window-header-bg);
+    border-top: 1px solid var(--window-border);
     border-radius: 4px 4px 0 0;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
     z-index: 3;
     display: flex;
     justify-content: center;
@@ -1766,12 +1787,12 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     font-family: "Courier New", monospace;
     font-size: 14px;
     font-weight: bold;
-    color: #000;
-    background: #e5e5e5;
+    color: var(--text-main);
+    background: var(--input-bg);
     padding: 2px 6px;
     border-radius: 2px;
-    border: 1px solid #000;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--input-border);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* Tracks & Faders */
@@ -1780,7 +1801,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     display: flex;
     justify-content: space-between;
     gap: 2px;
-    background: #111;
+    background: var(--window-control-bg);
     padding: 4px;
     border-radius: 2px;
 }
@@ -1790,8 +1811,8 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     display: flex;
     flex-direction: column;
     position: relative;
-    background: #0a0a0a;
-    border-right: 1px solid #333;
+    background: var(--input-bg);
+    border-right: 1px solid var(--border-color);
     overflow: hidden;
 }
 
@@ -1799,9 +1820,9 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     width: 100%;
     height: 20px;
     font-size: 9px;
-    background: #252525;
-    border: 1px solid #000;
-    color: #555;
+    background: var(--button-bg);
+    border: 1px solid var(--button-border, var(--input-border));
+    color: var(--text-muted);
     border-radius: 2px;
     font-weight: bold;
     text-transform: uppercase;
@@ -1813,9 +1834,9 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 .track-btn.selected {
-    background: #444;
-    color: #fff;
-    border-color: #666;
+    background: var(--button-hover);
+    color: var(--text-main);
+    border-color: var(--input-border);
 }
 
 .track-has-data::after {
@@ -1905,7 +1926,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #000;
+    background: var(--window-control-bg);
     padding: 10px;
     border-radius: 4px;
 }
@@ -1913,10 +1934,10 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 .transport-group {
     display: flex;
     gap: 2px;
-    background: #111;
+    background: var(--window-header-bg);
     padding: 2px;
     border-radius: 2px;
-    border: 1px solid #333;
+    border: 1px solid var(--window-control-border);
 }
 
 .tape-btn {
@@ -1978,7 +1999,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 .tape-setting-row {
-    color: #aaa;
+    color: var(--text-muted);
     font-size: 11px;
     margin-bottom: 10px;
     text-transform: uppercase;
@@ -1988,9 +2009,9 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 .tape-input {
-    background: #000;
-    border: 1px solid #444;
-    color: #fff;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-main);
     padding: 4px;
     width: 50px;
     text-align: center;
@@ -2001,15 +2022,15 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    background: #1a1a1a;
+    background: var(--window-header-bg);
     padding: 4px;
-    border: 1px solid #000;
+    border: 1px solid var(--window-control-border);
     border-radius: 2px;
 }
 
 .speed-label {
     font-size: 8px;
-    color: #666;
+    color: var(--text-muted);
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -2018,7 +2039,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 80px;
     height: 4px;
-    background: #000;
+    background: var(--window-control-bg);
     border-radius: 2px;
 }
 
@@ -2026,16 +2047,16 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 8px;
     height: 12px;
-    background: #888;
-    border: 1px solid #000;
+    background: var(--text-muted);
+    border: 1px solid var(--input-border);
     cursor: ew-resize;
 }
 
 /* 10.2 TAPE HEADER CONTROLS (Restored) */
 .tape-function-btn {
-    background: #1a1a1a;
-    border: 1px solid #444;
-    color: #777;
+    background: var(--button-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-muted);
     padding: 3px 8px;
     font-size: 9px;
     font-weight: 700;
@@ -2069,8 +2090,8 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     display: none;
     width: 100%;
     height: 160px;
-    background-color: #222;
-    border: 2px solid #555;
+    background-color: var(--window-bg);
+    border: 2px solid var(--window-border);
     border-radius: 0 0 6px 6px;
     position: relative;
     padding: 10px;
@@ -2423,8 +2444,15 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 @keyframes dialogPop {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .dialog-box h3 {
@@ -2459,4 +2487,20 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     font-size: 1rem;
     padding: 0.5rem;
     width: 100%;
+}
+/* Scope close button */
+.scope-close-btn {
+    background: none;
+    border: none;
+    color: var(--window-header-text);
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 4px;
+    margin-left: 4px;
+    transition: color 0.2s;
+}
+
+.scope-close-btn:hover {
+    color: var(--window-close-hover);
 }

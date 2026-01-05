@@ -2243,7 +2243,7 @@ function savePatchAsPng() {
     totalWidth += 60; // 30px padding each side
     let fullHeight = wrapper.scrollHeight + 40;
 
-    const scale = 3;
+    const scale = 2; // Reduced from 3 to decrease file size
 
     const options = {
         width: totalWidth * scale,
