@@ -17,29 +17,31 @@
             <h1
                 style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">
                 Workshop System Patch Notes</h1>
-            <div style="font-size: 0.7rem; color: var(--text-muted);">v1.9</div>
+            <!-- <div style="font-size: 0.7rem; color: var(--text-muted);">v2.1</div> -->
         </div>
 
         <div id="mainToolbar">
-            <button id="themeToggle" class="toolbar-btn" title="Toggle Theme">
-                <svg viewBox="0 0 24 24">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-            </button>
-            <button id="fullscreenToggle" class="toolbar-btn" title="Full Screen">
-                <svg viewBox="0 0 24 24">
-                    <path
-                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
-                    </path>
-                </svg>
-            </button>
-            <button id="perfToggle" class="toolbar-btn" title="Performance Mode">
-                <svg viewBox="0 0 24 24">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                <span class="hidden sm:inline">Live</span>
-            </button>
+            <div class="btn-group">
+                <button id="themeToggle" class="toolbar-btn" title="Toggle Theme">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="fullscreenToggle" class="toolbar-btn" title="Full Screen">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                        </path>
+                    </svg>
+                </button>
+                <button id="perfToggle" class="toolbar-btn" title="Performance Mode">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Live</span>
+                </button>
+            </div>
 
             <div class="btn-group">
                 <button id="audioToggle" class="toolbar-btn" title="Audio">
@@ -57,19 +59,19 @@
                         <line x1="8" y1="23" x2="16" y2="23"></line>
                     </svg>
                 </button>
-                <button id="midiToggle" class="toolbar-btn" title="MIDI">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M2 12h20"></path>
-                        <path d="M6 12v4"></path>
-                        <path d="M10 12v4"></path>
-                        <path d="M14 12v4"></path>
-                        <path d="M18 12v4"></path>
-                        <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                <button id="midiToggle" class="toolbar-btn" title="MIDI / Keyboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <!-- Keys: C, D, E, F (Width ~5 each) -->
+                        <rect x="2" y="6" width="20" height="12" rx="1"></rect>
+                        <path d="M7 6v12"></path>
+                        <path d="M12 6v12"></path>
+                        <path d="M17 6v12"></path>
+                        <!-- Black Keys -->
+                        <path d="M5.5 6v7h3V6z" fill="currentColor" stroke="none"></path>
+                        <path d="M10.5 6v7h3V6z" fill="currentColor" stroke="none"></path>
                     </svg>
                 </button>
             </div>
-
-
 
             <div class="btn-group">
                 <button id="pedalToggle" class="toolbar-btn" title="Toggle Pedalboard">
@@ -88,17 +90,14 @@
                 </button>
                 <button id="recorderToggle" class="toolbar-btn" title="Audio Recorder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="7" cy="12" r="5" />
-                        <circle cx="7" cy="12" r="1.5" fill="currentColor" stroke="none" />
-
-                        <circle cx="17" cy="12" r="5" />
-                        <circle cx="17" cy="12" r="1.5" fill="currentColor" stroke="none" />
-
-                        <path d="M 12 10 L 16 10 L 16 14 L 12 14 L 12 10" stroke-width="0" fill="none" />
-                        <line x1="12" y1="12" x2="16" y2="12" stroke-width="1.5" />
-                        <line x1="7" y1="12" x2="17" y2="12" stroke="none" stroke-width="1" />
-                        <line x1="7" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1"
-                            stroke-dasharray="2 2" />
+                        <!-- Reels -->
+                        <circle cx="7" cy="10" r="4"></circle>
+                        <circle cx="17" cy="10" r="4"></circle>
+                        <!-- Spokes (simple cross) -->
+                        <path d="M7 6v8 M3 10h8" stroke-width="1"></path>
+                        <path d="M17 6v8 M13 10h8" stroke-width="1"></path>
+                        <!-- Tape Looping at bottom -->
+                        <path d="M7 14c0 4 10 4 10 0"></path>
                     </svg>
                 </button>
 
@@ -126,18 +125,11 @@
                 </svg>
             </button>
 
-            <input type="file" id="loadPatchInput" accept=".json,.png,.wav" style="display: none;" />
-            <button id="loadPatchButton" class="toolbar-btn" title="Load Patch from File">
-                <svg viewBox="0 0 24 24">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-            </button>
-
-            <select id="presetsDropdown" class="themed-input preset-select">
-                <option>Library</option>
-            </select>
-
-            <div class="btn-group">
+            <!-- PRESET CONTROLS GROUP -->
+            <div class="btn-group preset-controls">
+                <select id="presetsDropdown" class="themed-input preset-select">
+                    <option>Library</option>
+                </select>
                 <button id="savePresetButton" class="toolbar-btn" title="Save Preset">
                     <svg viewBox="0 0 24 24">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path>
@@ -151,20 +143,46 @@
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 </button>
+            </div>
 
-                <button id="exportMenuToggle" class="toolbar-btn" title="Export Patch">
+            <!-- FILE / EXPORT / SHARE GROUP -->
+            <div class="btn-group">
+                <input type="file" id="loadPatchInput" accept=".json,.png,.wav" style="display: none;" />
+                <button id="loadPatchButton" class="toolbar-btn" title="Load Patch from File">
                     <svg viewBox="0 0 24 24">
-                        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.219"></path>
-                        <path d="M16 16l-4 4-4-4"></path>
-                        <path d="M12 12v9"></path>
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                 </button>
-                <button id="clearButton" class="toolbar-btn" title="Clear All">
+                <button id="exportMenuToggle" class="toolbar-btn" title="Export Patch">
                     <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg></button>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                <button id="shareUrlBtn" class="toolbar-btn" title="Share URL">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                </button>
+
+
+            </div>
+
+            <div class="toolbar-group">
+                <button id="clearButton" class="toolbar-btn btn-danger" title="Clear All / Reset">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                    <span class="hidden sm:inline" style="margin-left:4px;">Reset</span>
+                </button>
             </div>
         </div>
 

@@ -1857,6 +1857,20 @@ function setupExportHandlers() {
     const menu = document.getElementById('exportMenu');
     document.getElementById('exportMenuToggle').addEventListener('click', showExportMenu);
 
+    // NEW Share Button Handler
+    const shareBtn = document.getElementById('shareUrlBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            // Reusing logic from menu
+            const optimized = optimizeState(getCurrentPatchState());
+            const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(optimized));
+            let baseUrl = window.location.href.split('#')[0];
+            try { if (window.self !== window.top) baseUrl = window.top.location.href.split('#')[0]; } catch (e) { }
+            const u = `${baseUrl}#p=${compressed}`;
+            navigator.clipboard.writeText(u).then(() => showMessage("URL Copied!", "success"));
+        });
+    }
+
     menu.addEventListener('click', async (e) => {
         const action = e.target.dataset.action;
         if (!action) return;
@@ -2985,6 +2999,12 @@ window.onload = function () {
             };
             loadState(cleanState);
             saveState();
+
+            // Allow clearing the dropdown
+            const dd = document.getElementById('presetsDropdown');
+            if (dd) dd.value = "";
+            document.getElementById('deletePresetButton').disabled = true;
+
             showMessage("Patch Cleared", "warning");
         }
     });
