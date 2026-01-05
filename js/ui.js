@@ -3,6 +3,93 @@
 // Handles rendering, user interaction, drag-and-drop, and DOM manipulation.
 // =========================================================================
 
+// --- CUSTOM DIALOG HELPER (Fullscreen-safe) -----------------------------
+const CustomDialog = {
+    show(title, message, type = 'alert', defaultValue = '') {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('customDialogOverlay');
+            const titleEl = document.getElementById('dialogTitle');
+            const messageEl = document.getElementById('dialogMessage');
+            const inputEl = document.getElementById('dialogInput');
+            const cancelBtn = document.getElementById('dialogCancelBtn');
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            // Configure based on type
+            if (type === 'prompt') {
+                inputEl.classList.remove('hidden');
+                inputEl.value = defaultValue;
+                cancelBtn.classList.remove('hidden');
+                setTimeout(() => inputEl.focus(), 100);
+            } else if (type === 'confirm') {
+                inputEl.classList.add('hidden');
+                cancelBtn.classList.remove('hidden');
+            } else { // alert
+                inputEl.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+            }
+
+            const handleConfirm = () => {
+                overlay.classList.add('hidden');
+                cleanup();
+                if (type === 'prompt') {
+                    resolve(inputEl.value);
+                } else if (type === 'confirm') {
+                    resolve(true);
+                } else {
+                    resolve(undefined);
+                }
+            };
+
+            const handleCancel = () => {
+                overlay.classList.add('hidden');
+                cleanup();
+                if (type === 'prompt') {
+                    resolve(null);
+                } else {
+                    resolve(false);
+                }
+            };
+
+            const handleKeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleConfirm();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancel();
+                }
+            };
+
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                overlay.removeEventListener('keydown', handleKeydown);
+            };
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            overlay.addEventListener('keydown', handleKeydown);
+
+            overlay.classList.remove('hidden');
+        });
+    },
+
+    alert(message) {
+        return this.show('Alert', message, 'alert');
+    },
+
+    confirm(message) {
+        return this.show('Confirm', message, 'confirm');
+    },
+
+    prompt(message, defaultValue = '') {
+        return this.show('Input', message, 'prompt', defaultValue);
+    }
+};
+
 // --- 1. COMPONENT RENDERING ----------------------------------------------
 
 function renderComponents() {
@@ -2182,17 +2269,7 @@ function savePatchAsPng() {
             // Effectively, we are creating a new view where margin-left on synth reveals the left rack.
         },
         cacheBust: false,
-        filter: (node) => {
-            // Exclude UI elements from the capture to prevent errors/clutter
-            const idsToExclude = [
-                'mainToolbar', 'appHeader', 'exportMenu',
-                'patchNameContainer', 'notesContainer',
-                'messageBox', 'contextMenu', 'scopeWindow',
-                'virtualKeyboard', 'loadGearInput'
-            ];
-            if (node.id && idsToExclude.includes(node.id)) return false;
-            return true;
-        }
+        filter: (node) => (node.id !== 'messageBox')
     };
 
     // Temporarily apply margin to synthContainer during capture to reveal left rack w/o negative coordinates
@@ -2876,7 +2953,7 @@ window.onload = function () {
         }
     });
 
-    document.getElementById('contextMenu').addEventListener('click', (e) => {
+    document.getElementById('contextMenu').addEventListener('click', async (e) => {
         const act = e.target.dataset.action;
 
         if (act === 'createStack' && contextTarget) {
@@ -2922,10 +2999,22 @@ window.onload = function () {
             noteData.push(n); document.getElementById('synthContainer').appendChild(createNoteElement(n)); saveState();
         }
         else if (act === 'removeNote' && contextTarget) { contextTarget.remove(); saveNotePositions(); saveState(); }
-        else if (act === 'styleNote' && contextTarget) { const c = prompt("Text Color:", contextTarget.style.color); if (c) contextTarget.style.color = c; const b = prompt("Bg Color:", contextTarget.style.backgroundColor); if (b) contextTarget.style.backgroundColor = b; saveNotePositions(); saveState(); }
+        else if (act === 'styleNote' && contextTarget) {
+            const c = await CustomDialog.prompt("Text Color:", contextTarget.style.color);
+            if (c) contextTarget.style.color = c;
+            const b = await CustomDialog.prompt("Background Color:", contextTarget.style.backgroundColor);
+            if (b) contextTarget.style.backgroundColor = b;
+            saveNotePositions(); saveState();
+        }
         else if (act === 'removeCable' && contextCable) { removeCable(contextCable.start, contextCable.end); }
-        else if (act === 'labelCable' && contextCable) { const l = prompt("Label:", contextCable.label); if (l !== null) { contextCable.label = l; redrawCables(); saveState(); } }
-        else if (act === 'setValue' && contextTarget) { const v = prompt("Value (-150 to 150):", 0); if (v !== null && !isNaN(v)) { updateKnobAngle(contextTarget, parseFloat(v)); contextTarget.classList.add('is-touched'); saveState(); } }
+        else if (act === 'labelCable' && contextCable) {
+            const l = await CustomDialog.prompt("Cable Label:", contextCable.label || '');
+            if (l !== null) { contextCable.label = l; redrawCables(); saveState(); }
+        }
+        else if (act === 'setValue' && contextTarget) {
+            const v = await CustomDialog.prompt("Value (-150 to 150):", '0');
+            if (v !== null && !isNaN(v)) { updateKnobAngle(contextTarget, parseFloat(v)); contextTarget.classList.add('is-touched'); saveState(); }
+        }
         else if (act === 'reset' && contextTarget) {
             if (contextTarget.classList.contains('jack')) {
                 cableData.filter(c => c.start === contextTarget.id || c.end === contextTarget.id).forEach(c => removeCable(c.start, c.end));
@@ -2951,10 +3040,10 @@ window.onload = function () {
         else if (act === 'addPedal') {
             const allTypes = Object.keys(PEDAL_DEFINITIONS);
             const available = allTypes.filter(t => !activePedalChain.includes(t));
-            if (available.length === 0) { alert("Board Full!"); return; }
+            if (available.length === 0) { await CustomDialog.alert("Board Full!"); return; }
 
             let msg = "Type name to add:\n"; available.forEach(t => msg += `- ${t}\n`);
-            const choice = prompt(msg);
+            const choice = await CustomDialog.prompt(msg);
 
             if (choice && PEDAL_DEFINITIONS[choice.toLowerCase()] && !activePedalChain.includes(choice.toLowerCase())) {
                 activePedalChain.push(choice.toLowerCase());
@@ -2988,8 +3077,8 @@ window.onload = function () {
 
     document.getElementById('randomPatchButton').addEventListener('click', generateRandomPatch);
 
-    document.getElementById('clearButton').addEventListener('click', () => {
-        if (confirm("Clear Patch? This will reset cables, knobs, notes, and pedal order.")) {
+    document.getElementById('clearButton').addEventListener('click', async () => {
+        if (await CustomDialog.confirm("Clear Patch? This will reset cables, knobs, notes, and pedal order.")) {
             cableData = [];
             noteData = [];
             componentStates = {};
@@ -3101,9 +3190,9 @@ window.onload = function () {
         showMessage(`Preset "${n}" Saved!`, "success");
     });
 
-    document.getElementById('deletePresetButton').addEventListener('click', () => {
+    document.getElementById('deletePresetButton').addEventListener('click', async () => {
         const n = document.getElementById('presetsDropdown').value;
-        if (n && confirm(`Delete preset "${n}"?`)) {
+        if (n && await CustomDialog.confirm(`Delete preset "${n}"?`)) {
             const p = JSON.parse(localStorage.getItem('mtm_patches') || '{}');
             delete p[n];
             localStorage.setItem('mtm_patches', JSON.stringify(p));
@@ -3438,9 +3527,9 @@ function renderCustomModuleToDOM(moduleDef) {
     deleteBtn.style.top = '50%';
     deleteBtn.style.transform = 'translateY(-50%)';
 
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm(`Remove ${name}?`)) {
+        if (await CustomDialog.confirm(`Remove ${name}?`)) {
             removeCustomModule(id);
         }
     });

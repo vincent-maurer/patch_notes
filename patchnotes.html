@@ -216,6 +216,20 @@
         </div>
 
     </div>
+
+    <!-- Custom Dialog Overlay (Outside transformed wrapper for proper scaling) -->
+    <div id="customDialogOverlay" class="hidden">
+        <div class="dialog-box">
+            <h3 id="dialogTitle">Confirm</h3>
+            <p id="dialogMessage">Are you sure?</p>
+            <input type="text" id="dialogInput" class="themed-input hidden" autocomplete="off">
+            <div class="dialog-buttons">
+                <button id="dialogCancelBtn" class="toolbar-btn">Cancel</button>
+                <button id="dialogConfirmBtn" class="toolbar-btn btn-active-green">OK</button>
+            </div>
+        </div>
+    </div>
+
     <ul id="contextMenu">
         <li data-action="reset">Reset to Default</li>
         <li data-action="labelCable" data-type="cable" class="hidden">Add Label</li>

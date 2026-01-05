@@ -10,13 +10,13 @@ const TAPE = {
     activeLoopLength: 30,
     loopEnabled: true,
     sampleRate: 44100,
-    
+
     // State
     tracks: [null, null, null, null],
     sources: [null, null, null, null],
     muted: [false, false, false, false],
     gains: [1.0, 1.0, 1.0, 1.0],
-    
+
     // Status
     isPlaying: false,
     isRecording: false,
@@ -37,11 +37,11 @@ const TAPE = {
     wowGain: null,
     monitorNode: null,
     extAttenuator: null,
-    
+
     // FX Parameters
     wowAmount: 0,
     satAmount: 0,
-    
+
     // Timing
     rafId: null,
     lastUiTime: 0
@@ -87,10 +87,10 @@ function initTape() {
     TAPE.wowOsc = audioCtx.createOscillator();
     TAPE.wowOsc.type = 'sine';
     TAPE.wowOsc.frequency.value = 0.5;
-    
+
     TAPE.wowGain = audioCtx.createGain();
     TAPE.wowGain.gain.value = 0;
-    
+
     TAPE.wowOsc.connect(TAPE.wowGain);
     TAPE.wowOsc.start();
 
@@ -140,16 +140,16 @@ function updateTapeRouting() {
     const sourceExt = audioNodes['Stereo_Line_In'];
 
     // Cleanup existing connections
-    try { sourceMix.disconnect(TAPE.recorderNode); } catch (e) {}
-    try { sourceExt.disconnect(TAPE.extAttenuator); } catch (e) {}
-    try { TAPE.extAttenuator.disconnect(); } catch (e) {}
-    try { sourceExt.disconnect(TAPE.monitorNode); } catch (e) {}
+    try { sourceMix.disconnect(TAPE.recorderNode); } catch (e) { }
+    try { sourceExt.disconnect(TAPE.extAttenuator); } catch (e) { }
+    try { TAPE.extAttenuator.disconnect(); } catch (e) { }
+    try { sourceExt.disconnect(TAPE.monitorNode); } catch (e) { }
 
     // Apply Routing
     if (TAPE.sourceMode === 'mix') {
         if (sourceMix) sourceMix.connect(TAPE.recorderNode);
         TAPE.monitorNode.gain.value = 0;
-        try { sourceMix.connect(audioCtx.destination); } catch (e) {}
+        try { sourceMix.connect(audioCtx.destination); } catch (e) { }
     } else {
         if (sourceExt) {
             sourceExt.connect(TAPE.extAttenuator);
@@ -157,7 +157,7 @@ function updateTapeRouting() {
             TAPE.extAttenuator.connect(TAPE.monitorNode);
             TAPE.monitorNode.gain.value = 1.0;
         }
-        try { sourceMix.disconnect(audioCtx.destination); } catch (e) {}
+        try { sourceMix.disconnect(audioCtx.destination); } catch (e) { }
     }
 }
 
@@ -171,13 +171,13 @@ function tapePlay() {
         return;
     }
     if (!TAPE.masterGain) initTape();
-    
+
     // Auto-rewind if at end and not looping
     if (!TAPE.loopEnabled && TAPE.offset >= TAPE.activeLoopLength - 0.1) {
         TAPE.offset = 0;
         updateTapeCounter();
     }
-    
+
     if (TAPE.isPlaying) tapeStop();
 
     TAPE.startTime = audioCtx.currentTime;
@@ -255,7 +255,7 @@ function tapeStop() {
                     if (TAPE.wowGain) TAPE.wowGain.disconnect(obj.node.playbackRate);
                     obj.node.disconnect();
                     obj.gain.disconnect();
-                } catch (e) {}
+                } catch (e) { }
             }
         });
         TAPE.sources = [null, null, null, null];
@@ -347,7 +347,7 @@ function updateTrackGains() {
             // Mute logic: Global mute OR actively recording on this track
             const isRecTarget = (TAPE.isRecording && TAPE.activeTrackIndex === i);
             const isMuted = TAPE.muted[i];
-            
+
             // Fader Logic
             const faderLevel = (TAPE.gains && TAPE.gains[i] !== undefined) ? TAPE.gains[i] : 1.0;
             const targetVol = (isMuted || isRecTarget) ? 0.0 : faderLevel;
@@ -368,7 +368,7 @@ function declickBuffer(buffer) {
 
     for (let c = 0; c < buffer.numberOfChannels; c++) {
         const data = buffer.getChannelData(c);
-        
+
         // Fade In
         for (let i = 0; i < fadeLen; i++) {
             data[i] *= (i / fadeLen);
@@ -780,8 +780,8 @@ function tapeMixdown() {
     showMessage("Mixdown Exported (Trimmed)!", "success");
 }
 
-function tapeClearTrack() {
-    if (!confirm(`Erase Track ${TAPE.activeTrackIndex + 1}?`)) return;
+async function tapeClearTrack() {
+    if (!await CustomDialog.confirm(`Erase Track ${TAPE.activeTrackIndex + 1}?`)) return;
     const track = TAPE.tracks[TAPE.activeTrackIndex];
     if (track) {
         track.getChannelData(0).fill(0);
@@ -834,8 +834,8 @@ function setupRecorderUI() {
         }
     });
 
-    document.getElementById('tapeClearAll').addEventListener('click', () => {
-        if (confirm("Erase ENTIRE tape (all 4 tracks)?")) {
+    document.getElementById('tapeClearAll').addEventListener('click', async () => {
+        if (await CustomDialog.confirm("Erase ENTIRE tape (all 4 tracks)?")) {
             for (let i = 0; i < 4; i++) {
                 if (TAPE.tracks[i]) {
                     TAPE.tracks[i].getChannelData(0).fill(0);
