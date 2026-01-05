@@ -73,19 +73,19 @@ function updateScopeConnection() {
         'jack-cv2out': audioNodes['Computer_IO']?.cv2Out,
         'jack-pulse1out': audioNodes['Computer_IO']?.pulse1Out,
         'jack-pulse2out': audioNodes['Computer_IO']?.pulse2Out,
-        
+
         // Oscillators
         'jack-osc1sqrOut': audioNodes['VCO1'].output,
         'jack-osc1sinOut': audioNodes['VCO1_Sin'].output,
         'jack-osc2sqrOut': audioNodes['VCO2'].output,
         'jack-osc2sinOut': audioNodes['VCO2_Sin'].output,
-        
+
         // Processors
         'jack-slopes1out': audioNodes['Slopes1']?.output,
         'jack-slopes2out': audioNodes['Slopes2']?.output,
         'jack-ampOut': audioNodes['Amp']?.output,
         'jack-ringOut': audioNodes['RingMod']?.output,
-        
+
         // Filters
         'jack-filter1hpOut': audioNodes['VCF1']?.hpBpOut,
         'jack-filter1lpOut': audioNodes['VCF1']?.filter,
@@ -114,7 +114,7 @@ function updateScopeConnection() {
 
 function connectProbeToScope(jackId, channel) {
     if (!audioCtx || !scopeAnalyser1) return;
-    
+
     const source = globalJackMap[jackId];
     const targetAnalyser = channel === 0 ? scopeAnalyser1 : scopeAnalyser2;
     const gainProp = channel === 0 ? 'ch1' : 'ch2';
@@ -124,7 +124,7 @@ function connectProbeToScope(jackId, channel) {
         const node = Array.isArray(source) ? source[0] : source;
         try {
             if (scopeProbes[gainProp]) {
-                try { scopeProbes[gainProp].disconnect(); } catch (e) {}
+                try { scopeProbes[gainProp].disconnect(); } catch (e) { }
             }
 
             scopeProbes[gainProp] = audioCtx.createGain();
@@ -192,13 +192,19 @@ function drawScope() {
     }
 
     // --- 2. CLEAR & GRID ---
-    ctx.fillStyle = '#111';
+    const computedStyle = getComputedStyle(document.body);
+    const bgColor = computedStyle.getPropertyValue('--scope-bg').trim() || '#111';
+    const gridMajor = computedStyle.getPropertyValue('--scope-grid').trim() || '#333';
+    const gridMinor = '#2a2a2a';
+    const labelColor = computedStyle.getPropertyValue('--text-muted').trim() || '#666';
+
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 1;
-    
+
     // X-Axis Grid (Time) - 8 Divisions
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = gridMajor;
     ctx.beginPath();
     for (let i = 1; i < 8; i++) {
         const x = (width / 8) * i;
@@ -209,15 +215,15 @@ function drawScope() {
 
     // Y-Axis Grid (Voltage) - +/- 12V scale (3V steps)
     const voltageSteps = [12, 9, 6, 3, 0, -3, -6, -9, -12];
-    
+
     ctx.beginPath();
     voltageSteps.forEach(v => {
-        const unit = v / 12.0; 
+        const unit = v / 12.0;
         const y = (height / 2) - (unit * (height * 0.45));
-        
+
         // 0V is brighter, others are dim
-        ctx.strokeStyle = (v === 0) ? '#555' : '#2a2a2a'; 
-        
+        ctx.strokeStyle = (v === 0) ? '#555' : gridMinor;
+
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
     });
@@ -225,9 +231,9 @@ function drawScope() {
 
     // --- LABELS (Voltage & Time) ---
     if (!scopeSpecMode && !scopeXYMode) {
-        ctx.fillStyle = '#666';
+        ctx.fillStyle = labelColor;
         ctx.font = '9px monospace';
-        
+
         // 1. Voltage Labels (Left)
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
@@ -246,22 +252,22 @@ function drawScope() {
         let samplesOnScreen = 0;
 
         if (sliderVal > 80) {
-             // Rolling Mode Logic
-             samplesOnScreen = 256 + ((sliderVal - 80) * 100);
+            // Rolling Mode Logic
+            samplesOnScreen = 256 + ((sliderVal - 80) * 100);
         } else {
-             // Triggered Snapshot Logic
-             const minSamples = 32; 
-             const maxSamples = 8192;
-             const logScale = Math.pow(maxSamples / minSamples, sliderVal / 80);
-             samplesOnScreen = Math.floor(minSamples * logScale);
+            // Triggered Snapshot Logic
+            const minSamples = 32;
+            const maxSamples = 8192;
+            const logScale = Math.pow(maxSamples / minSamples, sliderVal / 80);
+            samplesOnScreen = Math.floor(minSamples * logScale);
         }
 
         if (audioCtx) {
             const totalMs = (samplesOnScreen / audioCtx.sampleRate) * 1000;
             const msPerDiv = totalMs / 8; // 8 Horizontal Divisions
-            
+
             let timeText = "";
-            if (msPerDiv >= 1000) timeText = (msPerDiv/1000).toFixed(2) + "s";
+            if (msPerDiv >= 1000) timeText = (msPerDiv / 1000).toFixed(2) + "s";
             else if (msPerDiv >= 1) timeText = msPerDiv.toFixed(1) + "ms";
             else timeText = (msPerDiv * 1000).toFixed(0) + "us";
 
@@ -287,7 +293,7 @@ function drawScope() {
         ctx.setLineDash([]);
 
         if (Math.abs(triggerLevel) > 0.05) {
-            ctx.fillStyle = '#666';
+            ctx.fillStyle = labelColor;
             ctx.textAlign = "right";
             ctx.font = `10px monospace`;
             ctx.fillText(`${triggerLevel.toFixed(2)}V`, width - 5, trigY - 4);
@@ -322,7 +328,7 @@ function drawScope() {
         drawFFT(scopeFreq1, 'rgb(74, 222, 128)');
         if (activeProbes[1]) drawFFT(scopeFreq2, 'rgb(244, 114, 182)');
 
-        ctx.fillStyle = '#666';
+        ctx.fillStyle = labelColor;
         ctx.textAlign = "center";
         ctx.font = `10px monospace`;
         ctx.fillText("100Hz", width * 0.35, height - 5);
@@ -365,16 +371,16 @@ function drawScope() {
             // 1. Calculate Vpp (Peak-to-Peak)
             let min = 1.0, max = -1.0;
             const len = scopeData1.length;
-            
+
             // Scan buffer to find min/max
             for (let i = 0; i < len; i += 4) {
                 const v = scopeData1[i];
                 if (v < min) min = v;
                 if (v > max) max = v;
             }
-            
+
             const rawVpp = max - min;
-            
+
             // Display Vpp (Scaled to +/- 12V system)
             const scaledVpp = rawVpp * 12.0;
             const elVpp = document.getElementById('measVpp');
@@ -539,7 +545,7 @@ function openScope() {
     const toggleBtn = document.getElementById('scopeToggle');
 
     win.style.display = 'flex';
-    toggleBtn.classList.add('scope-is-active');
+    toggleBtn.classList.add('active');
 
     if (!scopeAnalyser1) initScope();
     resetScopeBuffers();
@@ -555,7 +561,7 @@ function closeScope() {
     const toggleBtn = document.getElementById('scopeToggle');
 
     win.style.display = 'none';
-    toggleBtn.classList.remove('scope-is-active');
+    toggleBtn.classList.remove('active');
 
     // Stop the RAF Loop to save CPU
     isScopeRunning = false;

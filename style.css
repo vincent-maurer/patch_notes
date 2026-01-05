@@ -385,7 +385,7 @@ textarea,
     border-right-width: 1px;
 }
 
-.btn-group .toolbar-btn:first-child {
+.btn-group .toolbar-btn:first-child, #loadPatchButton {
     border-top-left-radius: 0.375rem;
     border-bottom-left-radius: 0.375rem;
 }
@@ -395,7 +395,6 @@ textarea,
     border-bottom-right-radius: 0.375rem;
 }
 
-/* Inputs */
 /* Inputs */
 .btn-group .themed-input {
     border-radius: 0;

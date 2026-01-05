@@ -3155,13 +3155,13 @@ window.onload = function () {
         const isOpen = board.classList.contains('open');
         if (isOpen) {
             board.classList.remove('open');
-            pedalBtn.classList.remove('btn-active-green');
+            pedalBtn.classList.remove('active');
             board.style.height = '0px';
             board.style.marginBottom = '-1rem';
             updatePedalCables();
         } else {
             board.classList.add('open');
-            pedalBtn.classList.add('btn-active-green');
+            pedalBtn.classList.add('active');
             updateInterfaceScaling();
             setTimeout(() => {
                 board.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

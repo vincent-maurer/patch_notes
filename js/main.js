@@ -109,7 +109,20 @@ function handleEscapeSequence(e) {
     const board = document.getElementById('pedalboard');
     if (board && board.classList.contains('open')) {
         const toggleBtn = document.getElementById('pedalToggle');
-        if (toggleBtn) toggleBtn.click(); // Reuse existing click logic
+        if (toggleBtn) toggleBtn.click();
+    }
+
+    // 5. Close Recorder
+    const rec = document.getElementById('recorderWindow');
+    if (rec && rec.style.display !== 'none' && rec.style.display !== '') {
+        const recBtn = document.getElementById('recorderToggle');
+        if (recBtn) recBtn.click();
+    }
+
+    // 6. Close Scope
+    const scope = document.getElementById('scopeWindow');
+    if (scope && scope.style.display !== 'none' && scope.style.display !== '') {
+        if (typeof closeScope === 'function') closeScope();
     }
 
     // 5. Cancel Cable Drag (if active)

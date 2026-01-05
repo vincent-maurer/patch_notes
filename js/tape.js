@@ -817,7 +817,10 @@ function setupRecorderUI() {
         document.getElementById('recorderToggle').classList.toggle('active', isHidden);
         if (isHidden && !TAPE.masterGain) initTape();
     });
-    document.getElementById('closeRecorder').addEventListener('click', () => win.style.display = 'none');
+    document.getElementById('closeRecorder').addEventListener('click', () => {
+        win.style.display = 'none';
+        document.getElementById('recorderToggle').classList.remove('active');
+    });
 
     // 2. Settings Menu
     const settingsOverlay = document.getElementById('tapeSettingsOverlay');
