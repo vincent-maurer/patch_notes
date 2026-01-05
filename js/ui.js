@@ -2182,7 +2182,17 @@ function savePatchAsPng() {
             // Effectively, we are creating a new view where margin-left on synth reveals the left rack.
         },
         cacheBust: false,
-        filter: (node) => (node.id !== 'messageBox')
+        filter: (node) => {
+            // Exclude UI elements from the capture to prevent errors/clutter
+            const idsToExclude = [
+                'mainToolbar', 'appHeader', 'exportMenu',
+                'patchNameContainer', 'notesContainer',
+                'messageBox', 'contextMenu', 'scopeWindow',
+                'virtualKeyboard', 'loadGearInput'
+            ];
+            if (node.id && idsToExclude.includes(node.id)) return false;
+            return true;
+        }
     };
 
     // Temporarily apply margin to synthContainer during capture to reveal left rack w/o negative coordinates
