@@ -1138,6 +1138,10 @@ function resetKnob(el) {
 function startKnobDrag(e) {
     if (e.target.tagName === 'INPUT') return;
 
+    // PREVENT viewport pan/zoom from seeing this touch
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+
     // Identify touch identifier or use 'mouse'
     const identifier = (e.touches && e.touches.length > 0) ? e.touches[e.touches.length - 1].identifier : 'mouse';
     const touch = (e.touches && e.touches.length > 0) ? e.touches[e.touches.length - 1] : e;
@@ -2824,9 +2828,13 @@ function initZoomPan() {
     };
 
     container.addEventListener('touchstart', (e) => {
-        if (['INPUT', 'BUTTON', 'SELECT', 'LABEL'].includes(e.target.tagName) ||
+        if (['INPUT', 'BUTTON', 'SELECT', 'LABEL', 'TEXTAREA'].includes(e.target.tagName) ||
             e.target.closest('.knob-img') ||
-            e.target.closest('.pedal-knob')) {
+            e.target.closest('.pedal-knob') ||
+            e.target.closest('.preset-select') ||
+            e.target.closest('#presetsDropdown') ||
+            e.target.closest('.card-grid') ||
+            e.target.closest('.card-selector-modal')) {
             return;
         }
 
@@ -2841,6 +2849,11 @@ function initZoomPan() {
             }
         }
         else if (e.touches.length === 2) {
+            // Safety: If either touch is a known knob touch, don't start zooming
+            if (activeKnobTouches[e.touches[0].identifier] || activeKnobTouches[e.touches[1].identifier]) {
+                initialPinchDistance = null;
+                return;
+            }
             VIEWPORT.isPanning = false;
             initialPinchDistance = getDistance(e.touches);
             lastScale = VIEWPORT.scale;
@@ -2848,7 +2861,11 @@ function initZoomPan() {
     }, { passive: false });
 
     container.addEventListener('touchmove', (e) => {
-        if (e.target.tagName === 'INPUT') return;
+        if (e.target.tagName === 'INPUT' ||
+            e.target.tagName === 'TEXTAREA' ||
+            e.target.closest('.card-grid') ||
+            e.target.closest('.card-selector-modal')) return;
+
         if (e.cancelable) e.preventDefault();
 
         if (e.touches.length === 1 && VIEWPORT.isPanning) {
@@ -2866,6 +2883,11 @@ function initZoomPan() {
             updateViewport();
         }
         else if (e.touches.length === 2 && initialPinchDistance) {
+            // Safety: If any finger is currently adjusting a knob, cancel the zoom
+            if (activeKnobTouches[e.touches[0].identifier] || activeKnobTouches[e.touches[1].identifier]) {
+                initialPinchDistance = null;
+                return;
+            }
             const newDistance = getDistance(e.touches);
             const center = getMidpoint(e.touches);
             const pinchRatio = newDistance / initialPinchDistance;
