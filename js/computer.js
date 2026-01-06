@@ -46,7 +46,7 @@ function swapComputerCard(typeIdOrName) {
             activeComputerCard = {
                 name: cardDef.name,
                 fake: true,
-                update: () => {}
+                update: () => { }
             };
         }
     } else {
@@ -54,7 +54,7 @@ function swapComputerCard(typeIdOrName) {
         activeComputerCard = {
             name: cardDef ? cardDef.name : "Error",
             fake: true,
-            update: () => {}
+            update: () => { }
         };
     }
 
@@ -91,7 +91,7 @@ function cycleNextCard() {
     const currentName = labelEl ? labelEl.textContent : 'No Card';
 
     let currentIdx = AVAILABLE_CARDS.findIndex(c => c.name === currentName);
-    
+
     // If current card isn't found (or is "No Card"), start from -1 so next is 0
     if (currentIdx === -1) currentIdx = AVAILABLE_CARDS.length - 1;
 
@@ -139,7 +139,7 @@ function initCardSelector() {
     // Toggle Checkbox
     document.getElementById('cardFilterToggle').addEventListener('change', (e) => {
         showOnlyImplemented = e.target.checked;
-        renderCardGrid(); 
+        renderCardGrid();
     });
 
     // Backdrop Click
@@ -184,7 +184,7 @@ function renderCardGrid() {
         const el = document.createElement('div');
         el.className = 'mini-card';
         if (card.id === currentId) el.classList.add('active-card');
-        
+
         // Visual distinction for Dummy cards
         if (!card.hasImplementation && card.id !== 'none') {
             el.classList.add('dummy-card');
@@ -203,7 +203,7 @@ function renderCardGrid() {
 
         // Handle both Click and Touch for selection
         const selectAction = (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
             e.stopPropagation();
             selectCardFromMenu(card.id);
         };
@@ -231,10 +231,10 @@ function selectCardFromMenu(cardId) {
             swapComputerCard(cardId);
             slot.classList.remove('insert');
             slot.classList.add('eject');
-            
+
             const cardEl = slot.querySelector('.program-card');
-            if(cardEl) cardEl.style.opacity = '1';
-            
+            if (cardEl) cardEl.style.opacity = '1';
+
             setTimeout(() => slot.classList.remove('eject'), 150);
         }, 150);
     } else {
@@ -309,15 +309,29 @@ function renderCardSlot() {
     tooltip.textContent = descText;
     slot.appendChild(tooltip);
 
+    // Add a dedicated Menu/Library button for easier mobile access
+    const libBtn = document.createElement('div');
+    libBtn.className = 'card-lib-btn';
+    libBtn.textContent = 'LIBRARY';
+    slot.appendChild(libBtn);
+    libBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCardSelector();
+    });
+    libBtn.addEventListener('touchstart', (e) => {
+        // Stop propagation so it doesn't trigger the slot's touchstart cycle logic
+        e.stopPropagation();
+        openCardSelector();
+    }, { passive: false });
+
     // --- INTERACTION LOGIC ---
 
     const handleSwap = (e) => {
         // Prevent default browser zooming/scrolling if on touch
-        if(e.cancelable) e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         e.stopPropagation();
 
         // On Mouse, only allow Left Click (button 0).
-        // On Touch, 'button' property might not exist or be 0, so we skip check.
         if (e.type === 'mousedown' && e.button !== 0) return;
 
         slot.classList.add('insert');
@@ -327,17 +341,50 @@ function renderCardSlot() {
             slot.classList.add('eject');
 
             const cardEl = slot.querySelector('.program-card');
-            if(cardEl) cardEl.style.opacity = '1';
+            if (cardEl) cardEl.style.opacity = '1';
 
             setTimeout(() => slot.classList.remove('eject'), 150);
         }, 150);
     };
 
     // Add listeners for both Mouse and Touch
-    slot.addEventListener('mousedown', handleSwap);
-    slot.addEventListener('touchstart', handleSwap, { passive: false });
+    slot.addEventListener('mousedown', (e) => {
+        if (e.button === 0) handleSwap(e);
+    });
 
-    // Right Click (Long Press on Mobile handled by UI.js long-press utility usually)
+    // Touch Handling (Tap vs Long Press)
+    let touchTimer = null;
+    let longPressOccurred = false;
+
+    slot.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        longPressOccurred = false;
+        touchTimer = setTimeout(() => {
+            longPressOccurred = true;
+            openCardSelector();
+        }, 500); // 500ms for long press
+    }, { passive: true });
+
+    slot.addEventListener('touchend', (e) => {
+        if (touchTimer) {
+            clearTimeout(touchTimer);
+            touchTimer = null;
+        }
+        if (!longPressOccurred) {
+            handleSwap(e);
+        }
+        longPressOccurred = false;
+    });
+
+    slot.addEventListener('touchmove', (e) => {
+        // If finger moves significantly, cancel the potential long press
+        if (touchTimer) {
+            clearTimeout(touchTimer);
+            touchTimer = null;
+        }
+    }, { passive: true });
+
+    // Right Click (Still supported for desktop)
     slot.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
