@@ -406,7 +406,8 @@ let dragStartY = 0;
 
 // --- Knobs & Notes ---
 let isDraggingKnob = false;
-let currentKnobElement = null;
+let currentKnobElement = null; // Still kept for single-touch compatibility/backwards compatibility if needed
+let activeKnobTouches = {}; // New: map to track { touchId: { el, lastAngle } }
 let isNoteDragging = false;
 let currentNoteElement = null;
 let startNoteDragX;

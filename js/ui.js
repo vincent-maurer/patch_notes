@@ -1116,7 +1116,7 @@ function stopCableDrag() {
 }
 
 // --- 5. INTERACTION (KNOBS, SWITCHES, NOTES) ----------------------------
-let knobDragLastAngle = 0;
+// knobDragLastAngle removed (now tracked per-touch in activeKnobTouches)
 
 function updateKnobAngle(el, val, isTouched = true) {
     el.style.setProperty('--angle', val);
@@ -1136,81 +1136,123 @@ function resetKnob(el) {
     saveState();
 }
 function startKnobDrag(e) {
-    e.preventDefault();
+    if (e.target.tagName === 'INPUT') return;
+
+    // Identify touch identifier or use 'mouse'
+    const identifier = (e.touches && e.touches.length > 0) ? e.touches[e.touches.length - 1].identifier : 'mouse';
+    const touch = (e.touches && e.touches.length > 0) ? e.touches[e.touches.length - 1] : e;
+
     isDraggingKnob = true;
-    currentKnobElement = e.currentTarget;
-    currentKnobElement.classList.add('is-touched');
+    const el = e.currentTarget;
+    el.classList.add('is-touched');
     triggerHandlingNoise(false);
 
-    // NEW: Initialize the angle tracker
-    const rect = currentKnobElement.getBoundingClientRect();
-    const cx = e.clientX || e.touches[0].clientX;
-    const cy = e.clientY || e.touches[0].clientY;
+    // NEW: Initialize the angle tracker for this specific touch
+    const rect = el.getBoundingClientRect();
+    const cx = touch.clientX;
+    const cy = touch.clientY;
 
     // Calculate initial raw angle (-180 to 180)
     let deg = (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180 / Math.PI) + 90;
     if (deg > 180) deg -= 360;
-    knobDragLastAngle = deg;
 
-    document.addEventListener('mousemove', dragKnob);
-    document.addEventListener('mouseup', stopKnobDrag);
-    document.addEventListener('touchmove', dragKnob, { passive: false });
-    document.addEventListener('touchend', stopKnobDrag);
+    activeKnobTouches[identifier] = {
+        el: el,
+        lastAngle: deg
+    };
+
+    // For biological feedback or other single-point logic:
+    currentKnobElement = el;
+
+    if (identifier === 'mouse') {
+        document.addEventListener('mousemove', dragKnob);
+        document.addEventListener('mouseup', stopKnobDrag);
+    } else {
+        document.addEventListener('touchmove', dragKnob, { passive: false });
+        document.addEventListener('touchend', stopKnobDrag);
+        document.addEventListener('touchcancel', stopKnobDrag);
+    }
 }
-function stopKnobDrag() { isDraggingKnob = false; saveState(); document.removeEventListener('mousemove', dragKnob); document.removeEventListener('mouseup', stopKnobDrag); }
+function stopKnobDrag(e) {
+    if (e.type.startsWith('touch')) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const id = e.changedTouches[i].identifier;
+            delete activeKnobTouches[id];
+        }
+    } else {
+        delete activeKnobTouches['mouse'];
+    }
+
+    if (Object.keys(activeKnobTouches).length === 0) {
+        isDraggingKnob = false;
+        document.removeEventListener('mousemove', dragKnob);
+        document.removeEventListener('mouseup', stopKnobDrag);
+        document.removeEventListener('touchmove', dragKnob);
+        document.removeEventListener('touchend', stopKnobDrag);
+        document.removeEventListener('touchcancel', stopKnobDrag);
+        saveState();
+    }
+}
 function dragKnob(e) {
     if (!isDraggingKnob) return;
-    e.preventDefault();
 
-    const rect = currentKnobElement.getBoundingClientRect();
-    const cx = e.clientX || e.touches[0].clientX;
-    const cy = e.clientY || e.touches[0].clientY;
+    const touchesToProcess = e.changedTouches ? e.changedTouches : [e];
 
-    // 1. Calculate current raw angle
-    let deg = (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180 / Math.PI) + 90;
-    if (deg > 180) deg -= 360;
+    for (let i = 0; i < touchesToProcess.length; i++) {
+        const t = touchesToProcess[i];
+        const identifier = t.identifier !== undefined ? t.identifier : 'mouse';
+        const data = activeKnobTouches[identifier];
 
-    // 2. Calculate Delta (Change since last frame)
-    let delta = deg - knobDragLastAngle;
+        if (!data) continue;
 
-    // 3. Fix Wrap-Around (crossing the bottom gap)
-    // If we jumped from 179 to -179, delta is -358. We want +2.
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
+        e.preventDefault();
+        const el = data.el;
+        const rect = el.getBoundingClientRect();
+        const cx = t.clientX;
+        const cy = t.clientY;
 
-    knobDragLastAngle = deg; // Update for next frame
+        // 1. Calculate current raw angle
+        let deg = (Math.atan2(cy - (rect.top + rect.height / 2), cx - (rect.left + rect.width / 2)) * 180 / Math.PI) + 90;
+        if (deg > 180) deg -= 360;
 
-    // 4. Apply Delta to Current Value
-    const state = componentStates[currentKnobElement.id];
-    const currentVal = state ? state.value : 0;
+        // 2. Calculate Delta (Change since last frame)
+        let delta = deg - data.lastAngle;
 
-    let newVal = currentVal + delta;
+        // 3. Fix Wrap-Around
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
 
-    // 5. Apply Limits
-    let minLimit = -150;
-    let maxLimit = 150;
+        data.lastAngle = deg; // Update for next frame
 
-    // Apply Type-Specific Defaults if no custom range
-    if (currentKnobElement.dataset.type === 'knob-small') {
-        minLimit = -135;
-        maxLimit = 135;
+        // 4. Apply Delta to Current Value
+        const state = componentStates[el.id];
+        const currentVal = state ? state.value : 0;
+        let newVal = currentVal + delta;
+
+        // 5. Apply Limits
+        let minLimit = -150;
+        let maxLimit = 150;
+
+        if (el.dataset.type === 'knob-small') {
+            minLimit = -135;
+            maxLimit = 135;
+        }
+
+        if (state && state.range) {
+            minLimit = state.range[0];
+            maxLimit = state.range[1];
+        }
+
+        newVal = Math.max(minLimit, Math.min(maxLimit, newVal));
+
+        // 6. Audio Feedback & Update
+        if (Math.abs(newVal - lastScratchAngle) > 3) {
+            triggerHandlingNoise(true);
+            lastScratchAngle = newVal;
+        }
+
+        updateKnobAngle(el, newVal);
     }
-
-    if (state && state.range) {
-        minLimit = state.range[0];
-        maxLimit = state.range[1];
-    }
-
-    // Clamp
-    newVal = Math.max(minLimit, Math.min(maxLimit, newVal));
-
-    // 6. Audio Feedback & Update
-    if (Math.abs(newVal - lastScratchAngle) > 3) {
-        triggerHandlingNoise(true);
-        lastScratchAngle = newVal;
-    }
-
-    updateKnobAngle(currentKnobElement, newVal);
 }
 
 function updateKnobRangeVisuals(el) {
@@ -2789,6 +2831,9 @@ function initZoomPan() {
         }
 
         if (e.touches.length === 1) {
+            // Check if this specific touch is already a knob drag
+            if (activeKnobTouches[e.touches[0].identifier]) return;
+
             if (!isDraggingCable && !isDraggingKnob && !isDraggingSwitch) {
                 VIEWPORT.isPanning = true;
                 VIEWPORT.lastX = e.touches[0].clientX;
@@ -2807,6 +2852,11 @@ function initZoomPan() {
         if (e.cancelable) e.preventDefault();
 
         if (e.touches.length === 1 && VIEWPORT.isPanning) {
+            // Check if this touch has been "taken" by a knob drag since it started
+            if (activeKnobTouches[e.touches[0].identifier]) {
+                VIEWPORT.isPanning = false;
+                return;
+            }
             const dx = e.touches[0].clientX - VIEWPORT.lastX;
             const dy = e.touches[0].clientY - VIEWPORT.lastY;
             VIEWPORT.x += dx;
