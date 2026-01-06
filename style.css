@@ -2161,6 +2161,12 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     left: 84%;
 }
 
+.vk-key-black:active,
+.vk-key-black.active {
+    background: #333;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
 /* ==========================================================================
    12. MOBILE & MEDIA QUERIES
    ========================================================================== */

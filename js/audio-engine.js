@@ -693,17 +693,17 @@ function onMIDIMessage(message) {
 
 
 function handleMidiMessage(message, isInternal = false) {
-    if (!isInternal && !midiEnabled) return; 
+    if (!isInternal && !midiEnabled) return;
     if (!audioNodes['Midi_Pitch']) return;
-    
+
     const [command, note, velocity] = message.data;
-    
+
     if (command === 144 && velocity > 0) { // Note On
         const cv = (note - 60) / 60.0;
         safeParam(audioNodes['Midi_Pitch'].offset, cv, audioCtx.currentTime);
         safeParam(audioNodes['Midi_Gate'].offset, 1.0, audioCtx.currentTime);
     }
-    
+
     if (command === 128 || (command === 144 && velocity === 0)) { // Note Off
         safeParam(audioNodes['Midi_Gate'].offset, 0.0, audioCtx.currentTime);
     }
@@ -713,7 +713,7 @@ function initVirtualKeyboard() {
     const container = document.getElementById('virtualKeyboard');
     if (!container) return;
 
-    container.innerHTML = ''; 
+    container.innerHTML = '';
 
     const startNote = 48; // C2
     const octaves = 3;
@@ -735,6 +735,7 @@ function initVirtualKeyboard() {
             wk.className = 'vk-key-white';
             const noteOffset = [0, 2, 4, 5, 7, 9, 11][i];
             const midiNote = startNote + (o * 12) + noteOffset;
+            wk.dataset.note = midiNote; // Store MIDI note
             setupKeyEvents(wk, midiNote);
             octaveDiv.appendChild(wk);
         });
@@ -752,6 +753,7 @@ function initVirtualKeyboard() {
             const bk = document.createElement('div');
             bk.className = `vk-key-black ${b.cls}`;
             const midiNote = startNote + (o * 12) + b.offset;
+            bk.dataset.note = midiNote; // Store MIDI note
             setupKeyEvents(bk, midiNote);
             octaveDiv.appendChild(bk);
         });
@@ -842,20 +844,20 @@ function createVCO(id) { // Added ID param to identify self-patching later
 
     // Pitch Sum (Coarse + Fine + V/Oct)
     const pitchSum = audioCtx.createGain();
-    pitchSum.gain.value = 1.0; 
+    pitchSum.gain.value = 1.0;
     // Note: V/Oct inputs (like Volt1) are -1..1.
     // 1.0 unit = 5 Octaves = 6000 cents.
     const vOctScaler = audioCtx.createGain();
-    vOctScaler.gain.value = 6000; 
+    vOctScaler.gain.value = 6000;
     pitchSum.connect(vOctScaler);
     vOctScaler.connect(node.parameters.get('detune'));
 
-    return { 
+    return {
         osc: node, // Keeps compatibility with generic update logic
         output: sqrBuff, // Default Square out
         sinOutput: sinBuff, // Sine out
-        fmGain, 
-        pitchSum 
+        fmGain,
+        pitchSum
     };
 }
 
@@ -872,7 +874,7 @@ function createVCF() {
     // Outputs
     const lpOut = audioCtx.createGain();
     const hpBpOut = audioCtx.createGain();
-    
+
     node.connect(lpOut, 0);   // Fixed LP output
     node.connect(hpBpOut, 1); // Switchable output
 
@@ -880,12 +882,12 @@ function createVCF() {
     const fmGain = audioCtx.createGain();
     fmGain.connect(node.parameters.get('cutoff'));
 
-    return { 
-        input, 
+    return {
+        input,
         processor: node,
         filter: lpOut,
         hpBpOut,
-        fmGain 
+        fmGain
     };
 }
 
@@ -973,7 +975,7 @@ function createStomp() {
     returnIn.connect(wetGain);
     dryGain.connect(output);
     wetGain.connect(output);
-    
+
     returnIn.connect(feedbackGain);
     feedbackGain.connect(feedbackLimiter);
     feedbackLimiter.connect(sendOut);
@@ -1121,11 +1123,11 @@ function finishBuild() {
         audioNodes['Comp_P1_Out'] = compIO.pulse1Out;
 
         if (!audioNodes['Midi_Pitch']) {
-            audioNodes['Midi_Pitch'] = audioCtx.createConstantSource(); 
+            audioNodes['Midi_Pitch'] = audioCtx.createConstantSource();
             audioNodes['Midi_Pitch'].offset.value = 0.0; // <--- Set Default to C3 (0V)
             audioNodes['Midi_Pitch'].start();
-            
-            audioNodes['Midi_Gate'] = audioCtx.createConstantSource(); 
+
+            audioNodes['Midi_Gate'] = audioCtx.createConstantSource();
             audioNodes['Midi_Gate'].offset.value = 0.0; // <--- Set Default to Gate Off
             audioNodes['Midi_Gate'].start();
         }
@@ -1163,7 +1165,7 @@ function finishBuild() {
         audioNodes['Chassis_Filter'] = audioCtx.createBiquadFilter();
         audioNodes['Chassis_Filter'].type = 'lowpass'; audioNodes['Chassis_Filter'].frequency.value = 200; audioNodes['Chassis_Filter'].Q.value = 2;
         audioNodes['Chassis_Gain'] = audioCtx.createGain(); audioNodes['Chassis_Gain'].gain.value = 0;
-        
+
         audioNodes['Scratch_Filter'] = audioCtx.createBiquadFilter();
         audioNodes['Scratch_Filter'].type = 'bandpass'; audioNodes['Scratch_Filter'].frequency.value = 5000; audioNodes['Scratch_Filter'].Q.value = 0.0;
         audioNodes['Scratch_Gain'] = audioCtx.createGain(); audioNodes['Scratch_Gain'].gain.value = 0;
@@ -1206,7 +1208,7 @@ function finishBuild() {
         audioNodes['Volt3'] = audioCtx.createConstantSource(); audioNodes['Volt3'].start();
         audioNodes['Volt4'] = audioCtx.createConstantSource(); audioNodes['Volt4'].start();
         audioNodes['Silence'] = audioCtx.createConstantSource(); audioNodes['Silence'].offset.value = 0; audioNodes['Silence'].start();
-        
+
         audioNodes['Stereo_Line_In'] = audioCtx.createGain(); audioNodes['Stereo_Line_In'].gain.value = 10.0;
         audioNodes['Stereo_L_Pre'] = audioCtx.createGain(); audioNodes['Stereo_R_Pre'] = audioCtx.createGain();
 
@@ -1225,22 +1227,22 @@ function finishBuild() {
     disconnectNode(audioNodes['Stereo_R_Pre']);
     if (audioNodes['Mic_Splitter']) disconnectNode(audioNodes['Mic_Splitter']);
 
-    if (audioNodes['VCO1']) { 
-        disconnectNode(audioNodes['VCO1'].output); 
-        disconnectNode(audioNodes['VCO1_Sin'].output); 
+    if (audioNodes['VCO1']) {
+        disconnectNode(audioNodes['VCO1'].output);
+        disconnectNode(audioNodes['VCO1_Sin'].output);
     }
-    if (audioNodes['VCO2']) { 
-        disconnectNode(audioNodes['VCO2'].output); 
+    if (audioNodes['VCO2']) {
+        disconnectNode(audioNodes['VCO2'].output);
         disconnectNode(audioNodes['VCO2_Sin'].output);
     }
     // Update Filter Disconnects
-    if (audioNodes['VCF1']) { 
-        disconnectNode(audioNodes['VCF1'].filter); 
-        disconnectNode(audioNodes['VCF1'].hpBpOut); 
+    if (audioNodes['VCF1']) {
+        disconnectNode(audioNodes['VCF1'].filter);
+        disconnectNode(audioNodes['VCF1'].hpBpOut);
     }
-    if (audioNodes['VCF2']) { 
-        disconnectNode(audioNodes['VCF2'].filter); 
-        disconnectNode(audioNodes['VCF2'].hpBpOut); 
+    if (audioNodes['VCF2']) {
+        disconnectNode(audioNodes['VCF2'].filter);
+        disconnectNode(audioNodes['VCF2'].hpBpOut);
     }
     if (audioNodes['Slopes1']) disconnectNode(audioNodes['Slopes1'].output);
     if (audioNodes['Slopes2']) disconnectNode(audioNodes['Slopes2'].output);
@@ -1275,15 +1277,15 @@ function finishBuild() {
         'jack-osc1sqrOut': audioNodes['VCO1'].output,
         'jack-osc1sinOut': audioNodes['VCO1'].sinOutput, // Use the new Sine buffer
         // Pitch/FM inputs are shared since it's one module now
-        'jack-osc1pitchIn': audioNodes['VCO1'].pitchSum, 
+        'jack-osc1pitchIn': audioNodes['VCO1'].pitchSum,
         'jack-osc1fmIn': audioNodes['VCO1'].fmGain,
 
         'jack-osc2sqrOut': audioNodes['VCO2'].output,
         'jack-osc2sinOut': audioNodes['VCO2'].sinOutput,
         'jack-osc2pitchIn': audioNodes['VCO2'].pitchSum,
         'jack-osc2fmIn': audioNodes['VCO2'].fmGain,
-        
-        'jack-osc2pitchIn': [audioNodes['VCO2'].pitchSum, audioNodes['VCO2_Sin'].pitchSum], 
+
+        'jack-osc2pitchIn': [audioNodes['VCO2'].pitchSum, audioNodes['VCO2_Sin'].pitchSum],
         'jack-osc2fmIn': [audioNodes['VCO2'].fmGain, audioNodes['VCO2_Sin'].fmGain],
         'jack-filter1In': audioNodes['VCF1'].input,
         'jack-filter1lpOut': audioNodes['VCF1'].filter,
@@ -1293,7 +1295,7 @@ function finishBuild() {
         'jack-filter2lpOut': audioNodes['VCF2'].filter,
         'jack-filter2hpOut': audioNodes['VCF2'].hpBpOut,
         'jack-filter2fmIn': audioNodes['VCF2'].fmGain,
-        
+
         'jack-slopes1in': audioNodes['Slopes1'].input, 'jack-slopes1out': audioNodes['Slopes1'].output, 'jack-slopes1cvIn': audioNodes['Slopes1'].cvInput,
         'jack-slopes2in': audioNodes['Slopes2'].input, 'jack-slopes2out': audioNodes['Slopes2'].output, 'jack-slopes2cvIn': audioNodes['Slopes2'].cvInput,
         'jack-ring1in': audioNodes['RingMod'].inputA, 'jack-ring2in': audioNodes['RingMod'].inputB, 'jack-ringOut': audioNodes['RingMod'].output,
@@ -1307,28 +1309,28 @@ function finishBuild() {
         'jack-mixerLout': audioNodes['Mix_Out_L'],
         'jack-mixerRout': audioNodes['Mix_Out_R'],
     };
-    
+
     connectPedalChain();
 
     cableData.forEach(cable => {
         // These connections are handled internally by the Worklet (via 'feedbackAmt')
         // to achieve zero-latency feedback. Connecting them here would double the signal.
         const isVco1Self = (cable.start === 'jack-osc1sinOut' && cable.end === 'jack-osc1fmIn') ||
-                           (cable.start === 'jack-osc1fmIn' && cable.end === 'jack-osc1sinOut');
+            (cable.start === 'jack-osc1fmIn' && cable.end === 'jack-osc1sinOut');
 
         const isVco2Self = (cable.start === 'jack-osc2sinOut' && cable.end === 'jack-osc2fmIn') ||
-                           (cable.start === 'jack-osc2fmIn' && cable.end === 'jack-osc2sinOut');
+            (cable.start === 'jack-osc2fmIn' && cable.end === 'jack-osc2sinOut');
 
-        if (isVco1Self || isVco2Self) return; 
+        if (isVco1Self || isVco2Self) return;
         // --- FIX END ---
 
         const sMap = jackMap[cable.start]; const eMap = jackMap[cable.end];
         const isOutput = (id) => /out|volt|send/i.test(id); const isInput = (id) => /in|fm|return/i.test(id);
-        
+
         let source = null, dest = null;
         if (isOutput(cable.start) && isInput(cable.end)) { source = sMap; dest = eMap; }
         else if (isOutput(cable.end) && isInput(cable.start)) { source = eMap; dest = sMap; }
-        
+
         if (source && dest) {
             const sources = Array.isArray(source) ? source : [source]; const dests = Array.isArray(dest) ? dest : [dest];
             sources.forEach(src => { dests.forEach(dst => { try { if (dst instanceof AudioParam) src.connect(dst); else src.connect(dst); } catch (e) { } }); });
@@ -1336,7 +1338,7 @@ function finishBuild() {
     });
 
     const isConnected = (jackId) => cableData.some(c => c.start === jackId || c.end === jackId);
-    
+
     if (!isConnected('jack-ring1in')) audioNodes['VCO1_Sin'].output.connect(audioNodes['RingMod'].inputA);
     if (!isConnected('jack-ring2in')) audioNodes['VCO2_Sin'].output.connect(audioNodes['RingMod'].inputB);
     if (!isConnected('jack-osc1fmIn')) audioNodes['VCO2_Sin'].output.connect(audioNodes['VCO1'].fmGain);
@@ -1345,7 +1347,7 @@ function finishBuild() {
     if (!isConnected('jack-osc2fmIn')) audioNodes['VCO1_Sin'].output.connect(audioNodes['VCO2_Sin'].fmGain);
     if (!isConnected('jack-slopes1in')) audioNodes['Silence'].connect(audioNodes['Slopes1'].input);
     if (!isConnected('jack-slopes2in')) audioNodes['Silence'].connect(audioNodes['Slopes2'].input);
-    
+
     if (isConnected('jack-stereoIn')) {
         audioNodes['Stereo_Line_In'].connect(audioNodes['Stereo_L_Pre']);
         audioNodes['Stereo_Line_In'].connect(audioNodes['Stereo_R_Pre']);
@@ -1355,17 +1357,17 @@ function finishBuild() {
             audioNodes['Mic_Splitter'].connect(audioNodes['Stereo_R_Pre'], 1);
         }
     }
-    
+
     if (!isConnected('jack-ampIn')) {
         if (audioNodes['Chassis_Gain']) audioNodes['Chassis_Gain'].connect(audioNodes['Amp'].input);
         if (audioNodes['Scratch_Gain']) audioNodes['Scratch_Gain'].connect(audioNodes['Amp'].input);
     }
-    
+
     // Humpback Filter Normalization
     if (!isConnected('jack-filter2In')) {
         audioNodes['VCF1'].filter.connect(audioNodes['VCF2'].input);
     }
-    
+
     const stomp = audioNodes['Stomp'];
     const pedals = audioNodes['Pedalboard'];
     try { stomp.sendOut.connect(pedals.input); } catch (e) { }
@@ -1390,7 +1392,7 @@ function finishBuild() {
 
         // Oscillators
         'jack-osc1sqrOut': audioNodes['VCO1']?.output,
-        'jack-osc1sinOut': audioNodes['VCO1_Sin']?.output, 
+        'jack-osc1sinOut': audioNodes['VCO1_Sin']?.output,
         'jack-osc2sqrOut': audioNodes['VCO2']?.output,
         'jack-osc2sinOut': audioNodes['VCO2_Sin']?.output,
         // Processors
@@ -1630,10 +1632,10 @@ function updateAudioParams() {
     const getOscFreq = (knobId) => {
         const kVal = componentStates[knobId] ? parseFloat(componentStates[knobId].value) : 0;
         const center = 130.81; // C3 at 12 o'clock
-        
+
         // Split Curve Logic:
         // Ensures we hit exactly 0.5Hz at Min and 26.5kHz at Max
-        
+
         if (kVal >= 0) {
             // Upper Half (0 to +150): 130.81Hz -> 26500Hz
             return center * Math.pow(26500 / center, kVal / 150);
@@ -1648,7 +1650,7 @@ function updateAudioParams() {
     // Knob (+/- 150) maps to +/- 279 cents
     const getFineTune = (knobId) => {
         const kVal = componentStates[knobId] ? parseFloat(componentStates[knobId].value) : 0;
-        const totalCents = 1200 * Math.log2(1.38); 
+        const totalCents = 1200 * Math.log2(1.38);
         return (kVal / 150) * (totalCents / 2);
     };
 
@@ -1656,7 +1658,7 @@ function updateAudioParams() {
     const vco1 = audioNodes['VCO1'];
     const osc1Freq = getOscFreq('knob-large-osc1');
     const fine1 = getFineTune('knob-small-osc1fine');
-    
+
     safeParam(vco1.osc.parameters.get('frequency'), osc1Freq, now);
     safeParam(vco1.osc.parameters.get('detune'), fine1, now);
 
@@ -1665,17 +1667,17 @@ function updateAudioParams() {
     safeParam(vco1.fmGain.gain, fm1Val, now);
 
     // Self-Patch Logic
-    const isSelfPatched1 = cableData.some(c => 
+    const isSelfPatched1 = cableData.some(c =>
         (c.start === 'jack-osc1sinOut' && c.end === 'jack-osc1fmIn') ||
         (c.start === 'jack-osc1fmIn' && c.end === 'jack-osc1sinOut')
     );
-    
+
     if (isSelfPatched1) {
         // Calculate Normalized Knob Position (0.0 to 1.0)
         // Knob raw: -150 to +150.
         const kRaw = componentStates['knob-small-osc1fm'] ? parseFloat(componentStates['knob-small-osc1fm'].value) : -150;
         const kNorm = (kRaw + 150) / 300;
-        
+
         safeParam(vco1.osc.parameters.get('feedbackAmt'), kNorm, now);
         safeParam(vco1.osc.parameters.get('fmGain'), fm1Val, now);
     } else {
@@ -1686,22 +1688,22 @@ function updateAudioParams() {
     const vco2 = audioNodes['VCO2'];
     const osc2Freq = getOscFreq('knob-large-osc2');
     const fine2 = getFineTune('knob-small-osc2fine');
-    
+
     safeParam(vco2.osc.parameters.get('frequency'), osc2Freq, now);
     safeParam(vco2.osc.parameters.get('detune'), fine2, now);
 
     const fm2Val = getKnobValue('knob-small-osc2fm', 0, 14750, 'exp');
     safeParam(vco2.fmGain.gain, fm2Val, now);
 
-    const isSelfPatched2 = cableData.some(c => 
+    const isSelfPatched2 = cableData.some(c =>
         (c.start === 'jack-osc2sinOut' && c.end === 'jack-osc2fmIn') ||
         (c.start === 'jack-osc2fmIn' && c.end === 'jack-osc2sinOut')
     );
-    
+
     if (isSelfPatched2) {
         const kRaw = componentStates['knob-small-osc2fm'] ? parseFloat(componentStates['knob-small-osc2fm'].value) : -150;
         const kNorm = (kRaw + 150) / 300;
-        
+
         safeParam(vco2.osc.parameters.get('feedbackAmt'), kNorm, now);
         safeParam(vco2.osc.parameters.get('fmGain'), fm2Val, now);
     } else {
@@ -1710,22 +1712,22 @@ function updateAudioParams() {
 
     const updateFilter = (mod, kCutoff, kRes, kFm, swId) => {
         const node = mod.processor;
-        if(!node) return;
+        if (!node) return;
 
         // 1. Calculate Cutoff (Exponential)
         const cutVal = componentStates[kCutoff] ? parseFloat(componentStates[kCutoff].value) : -150;
         // Map -150..150 to 20Hz..20kHz
         const cutoffHz = 20 * Math.pow(1000, (cutVal + 150) / 300);
-        
+
         safeParam(node.parameters.get('cutoff'), cutoffHz, now);
 
         // 2. FM Amount (Linear FM)
-        const fmDepth = getKnobValue(kFm, 0, 10000, 'exp'); 
+        const fmDepth = getKnobValue(kFm, 0, 10000, 'exp');
         safeParam(mod.fmGain.gain, fmDepth, now);
 
         // 3. Resonance
         const rRaw = getKnobValue(kRes, 0, 1, 'linear');
-        const resVal = Math.pow(rRaw, 1.4) * 1.3; 
+        const resVal = Math.pow(rRaw, 1.4) * 1.3;
         safeParam(node.parameters.get('resonance'), resVal, now);
 
         // 4. Update Mode Switch
@@ -1758,7 +1760,7 @@ function updateAudioParams() {
     const ampMode = componentStates['switch-2way-amp']?.value || 0;
     audioNodes['Amp'].shaper.curve = createDistortionCurve(ampMode === 1 ? 400 : 20);
     safeParam(audioNodes['Amp'].drive.gain, ampGain, now);
-    
+
     safeParam(audioNodes['Mixer_Ch1'].gain, getKnobValue('knob-small-mix1', 0, 1), now);
     safeParam(audioNodes['Mixer_Ch2'].gain, getKnobValue('knob-small-mix2', 0, 1), now);
     safeParam(audioNodes['Mixer_Ch3'].gain, getKnobValue('knob-small-mix3', 0, 1), now);
@@ -1840,3 +1842,61 @@ function updateAudioParams() {
     const rMix = revActive ? getKnobValue('p_rev_mix', 0, 1) : 0;
     safeParam(pb.reverb.mix.gain, rMix, now);
 }
+
+/* =========================================================================
+   COMPUTER QWERTY KEYBOARD MIDI INPUT
+   ========================================================================= */
+
+let keyboardOctaveOffset = 0; // +/- 12 semitones
+const activeKeyboardMap = new Map(); // key -> midiNote
+const qwertyToNoteMap = {
+    'a': 0, 'w': 1, 's': 2, 'e': 3, 'd': 4, 'f': 5, 't': 6, 'g': 7, 'y': 8, 'h': 9, 'u': 10, 'j': 11,
+    'k': 12, 'o': 13, 'l': 14, 'p': 15, ';': 16, "'": 17
+};
+
+window.addEventListener('keydown', (e) => {
+    // 1. Ignore if typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.repeat) return;
+
+    const key = e.key.toLowerCase();
+
+    // 2. Handle Octave Shifts
+    if (key === 'z') {
+        keyboardOctaveOffset = Math.max(-24, keyboardOctaveOffset - 12);
+        if (typeof showMessage === 'function') showMessage(`Keyboard Octave: ${keyboardOctaveOffset / 12}`, "info");
+        return;
+    }
+    if (key === 'x') {
+        keyboardOctaveOffset = Math.min(24, keyboardOctaveOffset + 12);
+        if (typeof showMessage === 'function') showMessage(`Keyboard Octave: +${keyboardOctaveOffset / 12}`, "info");
+        return;
+    }
+
+    // 3. Trigger Notes
+    if (qwertyToNoteMap[key] !== undefined) {
+        const baseNote = 60; // Middle C
+        const note = baseNote + qwertyToNoteMap[key] + keyboardOctaveOffset;
+
+        activeKeyboardMap.set(key, note);
+        handleMidiMessage({ data: [144, note, 127] }, true);
+
+        // Visual Feedback
+        const el = document.querySelector(`[data-note="${note}"]`);
+        if (el) el.classList.add('active');
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+    if (activeKeyboardMap.has(key)) {
+        const note = activeKeyboardMap.get(key);
+        activeKeyboardMap.delete(key);
+
+        handleMidiMessage({ data: [128, note, 0] }, true);
+
+        // Visual Feedback
+        const el = document.querySelector(`[data-note="${note}"]`);
+        if (el) el.classList.remove('active');
+    }
+});
