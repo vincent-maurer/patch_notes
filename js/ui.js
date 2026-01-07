@@ -161,10 +161,15 @@ function renderComponentLabels() {
 
     // A. From Active Computer Card
     if (activeComputerCard) {
-        // Find definition in library
-        const def = (window.AVAILABLE_CARDS || []).find(c => c.name === activeComputerCard.name);
-        if (def && def.labels) {
-            Object.assign(labelMap, def.labels);
+        // Priority 1: Dynamic labels from the instance (e.g., Utility Pair)
+        if (activeComputerCard.labels) {
+            Object.assign(labelMap, activeComputerCard.labels);
+        } else {
+            // Priority 2: Static labels from library definition
+            const def = (window.AVAILABLE_CARDS || []).find(c => c.name === activeComputerCard.name);
+            if (def && def.labels) {
+                Object.assign(labelMap, def.labels);
+            }
         }
     }
 
@@ -2712,6 +2717,12 @@ function getCurrentPatchState() {
         if (def) currentCardId = def.id;
     }
 
+    // Get utility pair state if active
+    let utilityPairState = null;
+    if (activeComputerCard && activeComputerCard.getState && typeof activeComputerCard.getState === 'function') {
+        utilityPairState = activeComputerCard.getState();
+    }
+
     return {
         patchName: nameInput ? nameInput.value : "Untitled Patch",
         globalNotes: notesArea ? notesArea.value : "",
@@ -2720,7 +2731,8 @@ function getCurrentPatchState() {
         notes: saveNotePositions(),
         pedalOrder: activePedalChain,
         activeCardId: currentCardId,
-        customModules: CUSTOM_MODULES
+        customModules: CUSTOM_MODULES,
+        utilityPairState: utilityPairState
     };
 }
 
@@ -2797,6 +2809,11 @@ function loadState(state) {
     });
     const targetCardId = state.activeCardId || 'reverb';
     swapComputerCard(targetCardId);
+
+    // RESTORE UTILITY PAIR STATE
+    if (state.utilityPairState && activeComputerCard && activeComputerCard.setState && typeof activeComputerCard.setState === 'function') {
+        activeComputerCard.setState(state.utilityPairState);
+    }
 
     // RESTORE LABELS
     renderComponentLabels();

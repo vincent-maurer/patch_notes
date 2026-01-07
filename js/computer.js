@@ -35,10 +35,14 @@ function swapComputerCard(typeIdOrName) {
     }
 
     // 3. Mount New
-    // FIX: Added 'typeof cardDef.class === "function"' to prevent trying to instantiate strings/objects
-    if (cardDef && typeof cardDef.class === 'function' && audioCtx && audioNodes['Computer_IO']) {
+    // FIX: Allow instantiation even if audio is off so cards can still mount UI/labels
+    if (cardDef && typeof cardDef.class === 'function') {
         try {
-            activeComputerCard = new cardDef.class(audioCtx, audioNodes['Computer_IO']);
+            // Pass null for ctx/io if not available
+            const ctx = (typeof audioCtx !== 'undefined') ? audioCtx : null;
+            const io = (typeof audioNodes !== 'undefined') ? audioNodes['Computer_IO'] : null;
+
+            activeComputerCard = new cardDef.class(ctx, io);
             activeComputerCard.mount();
         } catch (err) {
             console.error(`Failed to mount card ${cardDef.name}:`, err);

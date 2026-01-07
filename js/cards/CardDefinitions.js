@@ -286,11 +286,11 @@ const CARD_LIBRARY = [
         }
     },
     {
-        id: 'utility',
+        id: 'utility_pair',
         name: 'Utility Pair',
         num: '25',
         desc: "25 small utilities, which can be combined in pairs.",
-        class: 'CardNoOp',
+        class: 'CardUtilityPair',
         category: 'Utility',
         labels: {
             'knob-large-computer': 'Knob 1',

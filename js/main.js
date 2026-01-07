@@ -10,53 +10,41 @@
  * Handles audio visualization updates and hardware component logic.
  */
 function runClockLoop() {
-    // Only run if Audio Context exists and is active
-    if (typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running') {
-        const now = audioCtx.currentTime;
+    // Determine time (prefer audioCtx time, fallback to performance.now)
+    let now = 0;
+    const audioActive = typeof audioCtx !== 'undefined' && audioCtx && audioCtx.state === 'running';
 
-        // A. Update Computer Card Logic
-        if (typeof activeComputerCard !== 'undefined' && activeComputerCard) {
-            // Helper to normalize knob values (-150 to 150 -> 0 to 1)
-            const getNorm = (id) => {
-                const s = componentStates[id];
-                const val = s ? parseFloat(s.value) : 0;
-                return (val + 150) / 300;
-            };
+    if (audioActive) {
+        now = audioCtx.currentTime;
+    } else {
+        now = performance.now() / 1000;
+    }
 
-            const params = {
-                x: getNorm('knob-small-x'),
-                y: getNorm('knob-small-y'),
-                main: getNorm('knob-large-computer'),
-                switch: componentStates['switch-3way-computer']?.value || 0
-            };
+    // A. Update Computer Card Logic - Always run so UI/Dummy features work
+    if (typeof activeComputerCard !== 'undefined' && activeComputerCard && typeof activeComputerCard.update === 'function') {
+        const getNorm = (id) => {
+            const s = componentStates[id];
+            const val = s ? parseFloat(s.value) : 0;
+            return (val + 150) / 300;
+        };
 
-            activeComputerCard.update(params, now);
-        }
+        const params = {
+            x: getNorm('knob-small-x'),
+            y: getNorm('knob-small-y'),
+            main: getNorm('knob-large-computer'),
+            switch: componentStates['switch-3way-computer']?.value || 0
+        };
 
-        // B. Update Amp Meter
-        if (typeof updateAmpMeter === 'function') {
-            updateAmpMeter();
-        }
+        activeComputerCard.update(params, now);
+    }
 
-        // C. Update Slopes LEDs
-        // Forces UI to check LFO state 60fps
+    // B. Audio-specific updates only if running
+    if (audioActive) {
+        if (typeof updateAmpMeter === 'function') updateAmpMeter();
+
         if (typeof updateSlopes === 'function') {
-            updateSlopes(
-                'Slopes1',
-                'knob-medium-slopes1',
-                'switch-3way-slopes1shape',
-                'switch-3way-slopes1loop',
-                'led-slopes1-rise',
-                'led-slopes1-fall'
-            );
-            updateSlopes(
-                'Slopes2',
-                'knob-medium-slopes2',
-                'switch-3way-slopes2shape',
-                'switch-3way-slopes2loop',
-                'led-slopes2-rise',
-                'led-slopes2-fall'
-            );
+            updateSlopes('Slopes1', 'knob-medium-slopes1', 'switch-3way-slopes1shape', 'switch-3way-slopes1loop', 'led-slopes1-rise', 'led-slopes1-fall');
+            updateSlopes('Slopes2', 'knob-medium-slopes2', 'switch-3way-slopes2shape', 'switch-3way-slopes2loop', 'led-slopes2-rise', 'led-slopes2-fall');
         }
     }
 
