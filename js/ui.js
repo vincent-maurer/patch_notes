@@ -2920,8 +2920,36 @@ function initZoomPan() {
 
 function updateViewport() {
     const wrapper = document.getElementById('mainContentWrapper');
+    // Centering: If scale < 1, we might need to adjust translate to stay centered visually
     wrapper.style.transform = `translate(${VIEWPORT.x}px, ${VIEWPORT.y}px) scale(${VIEWPORT.scale})`;
     if (window.updateInterfaceScaling) window.updateInterfaceScaling();
+}
+
+function fitWorkspaceToScreen() {
+    const wrapper = document.getElementById('mainContentWrapper');
+    if (!wrapper) return;
+
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+
+    const workspaceW = 1200;
+    const workspaceH = 900;
+
+    const scaleW = (winW - 40) / workspaceW;
+    const scaleH = (winH - 40) / workspaceH;
+
+    let scale = Math.min(scaleW, scaleH);
+    if (scale > 1.2) scale = 1.2;
+    if (scale < 0.2) scale = 0.2;
+
+    VIEWPORT.scale = scale;
+
+    // Center horizontally
+    VIEWPORT.x = (winW - (workspaceW * scale)) / 2;
+    // Push down slightly
+    VIEWPORT.y = 20;
+
+    updateViewport();
 }
 
 function integrateFloatingWindows() {
@@ -2959,6 +2987,10 @@ window.onload = function () {
     renderPedalboard();
     if (typeof setupScopeUI === 'function') setupScopeUI();
     if (typeof setupRecorderUI === 'function') setupRecorderUI();
+
+    // 3. Initialize Visuals & Scaling
+    fitWorkspaceToScreen();
+
     if (typeof updateInterfaceScaling === 'function') updateInterfaceScaling();
     initColorPicker();
     setupExportHandlers();
