@@ -139,7 +139,75 @@ function renderComponents() {
             componentStates['button-1'] = { type: 'button', value: 1, isTouched: true };
         }
     }
+
+    renderComponentLabels();
 }
+
+function toggleLabels() {
+    showComponentLabels = !showComponentLabels;
+    renderComponentLabels();
+
+    // Update button visual state
+    const btn = document.getElementById('labelsToggle');
+    if (btn) {
+        if (showComponentLabels) btn.classList.add('btn-active');
+        else btn.classList.remove('btn-active');
+    }
+}
+
+function renderComponentLabels() {
+    // 1. Gather all label definitions
+    let labelMap = {};
+
+    // A. From Active Computer Card
+    if (activeComputerCard) {
+        // Find definition in library
+        const def = (window.AVAILABLE_CARDS || []).find(c => c.name === activeComputerCard.name);
+        if (def && def.labels) {
+            Object.assign(labelMap, def.labels);
+        }
+    }
+
+    // B. From Generic/Other Modules (Extensible)
+    // Could check active pedalboard or external gear here if needed in future
+
+    // 2. Iterate components and update labels
+    const components = document.querySelectorAll('.component');
+
+    components.forEach(el => {
+        let labelEl = el.querySelector('.component-label');
+        const id = el.id;
+
+        // Priority 1: User Defined Label (Editable)
+        let text = null;
+        if (componentStates[id] && componentStates[id].label) {
+            text = componentStates[id].label;
+        }
+
+        // Priority 2: Computer Card Label (if not overridden)
+        if (!text && labelMap[id]) {
+            text = labelMap[id];
+        }
+
+        if (text && showComponentLabels) {
+            if (!labelEl) {
+                labelEl = document.createElement('div');
+                labelEl.className = 'component-label';
+                el.appendChild(labelEl);
+            }
+            labelEl.textContent = text;
+            // Force reflow for transition?
+            requestAnimationFrame(() => labelEl.classList.add('visible'));
+        } else {
+            if (labelEl) {
+                labelEl.classList.remove('visible');
+                // Clear text so it doesn't "ghost" if re-shown before update
+                labelEl.textContent = "";
+            }
+        }
+    });
+}
+
 
 function createComponent(id, config) {
     const el = document.createElement('div');
@@ -1337,7 +1405,8 @@ function handleKnobWheel(e) {
 }
 function setSwitchState(el, state, isTouched = true) {
     el.setAttribute('data-state', state);
-    componentStates[el.id] = { type: el.dataset.type, value: state, isTouched: isTouched };
+    const existing = componentStates[el.id] || {};
+    componentStates[el.id] = { ...existing, type: el.dataset.type, value: state, isTouched: isTouched };
     if (isTouched) {
         el.classList.add('is-touched');
     } else {
@@ -1351,7 +1420,16 @@ function resetSwitch(el) {
     setSwitchState(el, def, false);
     saveState();
 }
-function handleButtonClick(e) { const el = e.currentTarget; const val = parseInt(el.getAttribute('data-state') || 0) === 0 ? 1 : 0; el.setAttribute('data-state', val); el.classList.add('is-touched'); componentStates[el.id] = { type: 'button', value: val, isTouched: true }; updateAudioParams(); saveState(); }
+function handleButtonClick(e) {
+    const el = e.currentTarget;
+    const val = parseInt(el.getAttribute('data-state') || 0) === 0 ? 1 : 0;
+    el.setAttribute('data-state', val);
+    el.classList.add('is-touched');
+    const existing = componentStates[el.id] || {};
+    componentStates[el.id] = { ...existing, type: 'button', value: val, isTouched: true };
+    updateAudioParams();
+    saveState();
+}
 
 function createNoteElement(d) {
     const el = document.createElement('div'); el.className = 'note-element'; el.id = d.id; el.style.left = d.x; el.style.top = d.y; el.textContent = d.text; el.contentEditable = true;
@@ -1580,6 +1658,19 @@ function showContextMenu(e, pedalId = null) {
         if (el.dataset.type && el.dataset.type.startsWith('knob')) {
             menu.querySelector('[data-action="setValue"]').style.display = 'block';
         }
+    }
+
+    // Add generic Edit Label for any component or switch
+    if (contextTarget && (contextTarget.classList.contains('component') || contextTarget.dataset.type)) {
+        let lblBtn = menu.querySelector('[data-action="editLabel"]');
+        if (!lblBtn) {
+            lblBtn = document.createElement('li');
+            lblBtn.dataset.action = 'editLabel';
+            lblBtn.textContent = 'Edit Label...';
+            menu.appendChild(lblBtn);
+        }
+        lblBtn.classList.remove('hidden');
+        lblBtn.style.display = 'block';
     }
     menu.style.display = 'block';
     let x = e.pageX;
@@ -2707,6 +2798,9 @@ function loadState(state) {
     const targetCardId = state.activeCardId || 'reverb';
     swapComputerCard(targetCardId);
 
+    // RESTORE LABELS
+    renderComponentLabels();
+
     requestAnimationFrame(() => {
         redrawCables();
         if (audioCtx) {
@@ -3128,7 +3222,8 @@ window.onload = function () {
                 else {
                     contextTarget.setAttribute('data-state', 0);
                     contextTarget.classList.remove('is-touched');
-                    componentStates[contextTarget.id] = { type: contextTarget.dataset.type || 'button', value: 0, isTouched: false };
+                    const existing = componentStates[contextTarget.id] || {};
+                    componentStates[contextTarget.id] = { ...existing, type: contextTarget.dataset.type || 'button', value: 0, isTouched: false };
                     saveState();
                 }
             }
@@ -3140,6 +3235,23 @@ window.onload = function () {
             saveState();
             renderPedalboard();
             connectPedalChain();
+        }
+        else if (act === 'editLabel' && contextTarget) {
+            const current = componentStates[contextTarget.id]?.label || '';
+            const newVal = await CustomDialog.prompt("Edit Label:", current);
+            if (newVal !== null) {
+                // Initialize state object if missing
+                if (!componentStates[contextTarget.id]) {
+                    componentStates[contextTarget.id] = {
+                        type: contextTarget.dataset.type || 'unknown',
+                        value: 0,
+                        isTouched: false
+                    };
+                }
+                componentStates[contextTarget.id].label = newVal;
+                saveState();
+                renderComponentLabels();
+            }
         }
         else if (act === 'addPedal') {
             const allTypes = Object.keys(PEDAL_DEFINITIONS);
@@ -3160,9 +3272,23 @@ window.onload = function () {
         }
     });
 
+    // --- 10. TOOLBAR HELPERS --------------------------------------------------
+
+    function flashButtonActive(id) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.classList.add('btn-active');
+        setTimeout(() => {
+            btn.classList.remove('btn-active');
+        }, 150);
+    }
+
     document.getElementById('audioToggle').addEventListener('click', toggleAudio);
+    const labelsBtn = document.getElementById('labelsToggle');
+    if (labelsBtn) labelsBtn.addEventListener('click', toggleLabels);
 
     document.getElementById('themeToggle').addEventListener('click', () => {
+        flashButtonActive('themeToggle');
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         localStorage.setItem('mtm_theme', isDark ? 'dark' : 'light');
@@ -3179,9 +3305,13 @@ window.onload = function () {
         });
     });
 
-    document.getElementById('randomPatchButton').addEventListener('click', generateRandomPatch);
+    document.getElementById('randomPatchButton').addEventListener('click', () => {
+        flashButtonActive('randomPatchButton');
+        generateRandomPatch();
+    });
 
     document.getElementById('clearButton').addEventListener('click', async () => {
+        flashButtonActive('clearButton');
         if (await CustomDialog.confirm("Clear Patch? This will reset cables, knobs, notes, and pedal order.")) {
             cableData = [];
             noteData = [];
@@ -3215,40 +3345,13 @@ window.onload = function () {
     const micBtn = document.getElementById('micToggle');
     const midiBtn = document.getElementById('midiToggle');
 
-    micBtn.addEventListener('click', async () => {
-        const micToggleBtn = document.getElementById('micToggle');
-        micEnabled = !micEnabled;
-        if (micEnabled) {
-            micToggleBtn.classList.add('mic-is-active');
-            await initMic();
-        } else {
-            micToggleBtn.classList.remove('mic-is-active');
-            if (audioNodes['Mic_Stream']) {
-                audioNodes['Mic_Stream'].getTracks().forEach(track => track.stop());
-                delete audioNodes['Mic_Stream'];
-                delete audioNodes['Mic_Splitter'];
-            }
-        }
-        updateAudioGraph();
-    });
+    micBtn.addEventListener('click', toggleMic);
+    midiBtn.addEventListener('click', toggleMIDI);
 
-    midiBtn.addEventListener('click', () => {
-        const vk = document.getElementById('virtualKeyboard');
-        if (midiEnabled) {
-            midiEnabled = false;
-            midiBtn.classList.remove('midi-is-active');
-            midiBtn.classList.remove('btn-active-blue');
-            vk.classList.remove('is-visible');
-            showMessage("MIDI Input Disabled", "warning");
-        } else {
-            midiEnabled = true;
-            midiBtn.classList.add('midi-is-active');
-            vk.classList.add('is-visible');
-            initMidi();
-            showMessage("MIDI Enabled (Virtual + External)", "success");
-        }
-        updateAudioGraph();
-    });
+    const gearBtn = document.getElementById('addGearBtn');
+    if (gearBtn) {
+        gearBtn.addEventListener('click', () => flashButtonActive('addGearBtn'));
+    }
 
     container.addEventListener('mousedown', startChassisDrag);
     container.addEventListener('touchstart', startChassisDrag, { passive: false });
@@ -3259,13 +3362,13 @@ window.onload = function () {
         const isOpen = board.classList.contains('open');
         if (isOpen) {
             board.classList.remove('open');
-            pedalBtn.classList.remove('active');
+            pedalBtn.classList.remove('btn-active'); // Updated class
             board.style.height = '0px';
             board.style.marginBottom = '-1rem';
             updatePedalCables();
         } else {
             board.classList.add('open');
-            pedalBtn.classList.add('active');
+            pedalBtn.classList.add('btn-active'); // Updated class
             updateInterfaceScaling();
             setTimeout(() => {
                 board.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3285,6 +3388,7 @@ window.onload = function () {
     });
 
     document.getElementById('savePresetButton').addEventListener('click', () => {
+        flashButtonActive('savePresetButton');
         const n = document.getElementById('patchNameInput').value.trim();
         if (!n) return showMessage("Please enter a patch name.", "warning");
         const p = JSON.parse(localStorage.getItem('mtm_patches') || '{}');
@@ -3300,31 +3404,22 @@ window.onload = function () {
             const p = JSON.parse(localStorage.getItem('mtm_patches') || '{}');
             delete p[n];
             localStorage.setItem('mtm_patches', JSON.stringify(p));
+            flashButtonActive('deletePresetButton');
             refreshPresetsDropdown("");
             showMessage("Preset Deleted.", "success");
         }
     });
 
     const fsBtn = document.getElementById('fullscreenToggle');
-    fsBtn.addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-            });
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-    });
+    fsBtn.addEventListener('click', toggleFullScreen);
     document.addEventListener('fullscreenchange', () => {
         if (document.fullscreenElement) {
-            fsBtn.classList.add('btn-active-green');
+            fsBtn.classList.add('btn-active'); // Updated class logic
             if (screen.orientation && screen.orientation.lock) {
                 try { screen.orientation.lock('landscape'); } catch (e) { }
             }
         } else {
-            fsBtn.classList.remove('btn-active-green');
+            fsBtn.classList.remove('btn-active'); // Updated class logic
         }
     });
 
@@ -3341,32 +3436,12 @@ window.onload = function () {
     });
 
     const perfBtn = document.getElementById('perfToggle');
-    perfBtn.addEventListener('click', () => {
-        isPerformanceMode = !isPerformanceMode;
-        if (isPerformanceMode) {
-            document.body.classList.add('performance-mode');
-            perfBtn.classList.add('perf-locked');
-            perfBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span class="hidden sm:inline">Perf</span>';
-            perfBtn.title = "Performance Mode";
-            showMessage("Performance Mode: Cables Locked", "warning");
-            if (screen.orientation && screen.orientation.lock) {
-                try {
-                    screen.orientation.lock('landscape').catch(err => { });
-                } catch (e) { }
-            }
-        } else {
-            document.body.classList.remove('performance-mode');
-            perfBtn.classList.remove('perf-locked');
-            perfBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span class="hidden sm:inline">Edit</span>';
-            perfBtn.title = "Editing Enabled";
-            showMessage("Edit Mode: Cables Unlocked", "success");
-            if (screen.orientation && screen.orientation.unlock) {
-                screen.orientation.unlock();
-            }
-        }
-    });
+    perfBtn.addEventListener('click', togglePerfMode);
 
-    document.getElementById('loadPatchButton').addEventListener('click', () => document.getElementById('loadPatchInput').click());
+    document.getElementById('loadPatchButton').addEventListener('click', () => {
+        flashButtonActive('loadPatchButton');
+        document.getElementById('loadPatchInput').click();
+    });
     document.getElementById('loadPatchInput').addEventListener('change', loadPatchFromFile);
 
     // Global click handler to blur custom label/name inputs when clicking elsewhere
@@ -3978,4 +4053,144 @@ function createCustomJack(id, label, moduleDef) {
     wrapper.appendChild(el);
     wrapper.appendChild(inp);
     return wrapper;
+}
+
+// --- GLOBAL TOGGLE FUNCTIONS ---
+
+function toggleAudio() {
+    isAudioEnabled = !isAudioEnabled;
+    const btn = document.getElementById('audioToggle');
+    if (isAudioEnabled) {
+        if (!audioCtx) initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        btn?.classList.add('btn-active');
+        showMessage("Audio Enabled", "success");
+    } else {
+        if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+        btn?.classList.remove('btn-active');
+        showMessage("Audio Muted", "neutral");
+    }
+}
+
+function toggleMic() {
+    micEnabled = !micEnabled;
+    const btn = document.getElementById('micToggle');
+
+    if (micEnabled) {
+        // initMic is async but we don't await it here to avoid blocking UI
+        initMic().catch(e => console.error(e));
+        btn?.classList.add('mic-is-active');
+        btn?.classList.add('btn-active');
+        showMessage("Microphone Active", "success");
+    } else {
+        if (audioNodes['Mic_Stream']) {
+            try {
+                audioNodes['Mic_Stream'].getTracks().forEach(track => track.stop());
+            } catch (e) { }
+            delete audioNodes['Mic_Stream'];
+            delete audioNodes['Mic_Splitter'];
+        }
+        btn?.classList.remove('mic-is-active');
+        btn?.classList.remove('btn-active');
+        showMessage("Microphone Muted", "neutral");
+    }
+    updateAudioGraph();
+}
+
+function togglePerfMode() {
+    isPerformanceMode = !isPerformanceMode;
+    const btn = document.getElementById('perfToggle');
+
+    if (isPerformanceMode) {
+        document.body.classList.add('performance-mode');
+        btn?.classList.add('perf-locked');
+        btn?.classList.add('btn-active');
+        if (btn) {
+            btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span class="hidden sm:inline">Perf</span>';
+            btn.title = "Performance Mode";
+        }
+        showMessage("Performance Mode: Cables Locked", "warning");
+        if (screen.orientation && screen.orientation.lock) {
+            try { screen.orientation.lock('landscape').catch(() => { }); } catch (e) { }
+        }
+    } else {
+        document.body.classList.remove('performance-mode');
+        btn?.classList.remove('perf-locked');
+        btn?.classList.remove('btn-active');
+        if (btn) {
+            btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span class="hidden sm:inline">Edit</span>';
+            btn.title = "Editing Enabled";
+        }
+        showMessage("Edit Mode: Cables Unlocked", "success");
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+    }
+    // Resize handling for canvas
+    window.dispatchEvent(new Event('resize'));
+}
+
+function toggleFullScreen() {
+    const btn = document.getElementById('fullscreenToggle');
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+        btn?.classList.add('btn-active');
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+        btn?.classList.remove('btn-active');
+    }
+}
+
+function toggleMIDI() {
+    const btn = document.getElementById('midiToggle');
+    const vk = document.getElementById('virtualKeyboard');
+    if (midiEnabled) {
+        midiEnabled = false;
+        btn?.classList.remove('midi-is-active');
+        btn?.classList.remove('btn-active');
+        vk?.classList.remove('is-visible');
+        showMessage("MIDI Input Disabled", "warning");
+    } else {
+        midiEnabled = true;
+        btn?.classList.add('midi-is-active');
+        btn?.classList.add('btn-active');
+        vk?.classList.add('is-visible');
+        if (window.initMidi) window.initMidi();
+        showMessage("MIDI Enabled (Virtual + External)", "success");
+    }
+    updateAudioGraph();
+}
+
+function focusView() {
+    const container = document.getElementById('synthContainer');
+    const wrapper = document.getElementById('mainContentWrapper');
+    if (!container || !wrapper) return;
+
+    // Default Zoom
+    VIEWPORT.scale = 0.85;
+
+    // Center Logic
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const synthRect = container.getBoundingClientRect(); // This is effectively 1200 * scale
+
+    // We want the SYNTH centered in the WRAPPER
+    // VIEWPORT.x/y is the translation applied to the container
+    // If x=0, y=0, the container is at top-left
+
+    // Desired Center X of Wrapper
+    const centerX = wrapperRect.width / 2;
+    const centerY = wrapperRect.height / 2;
+
+    // Center of Synth (unscaled)
+    const synthCenterX = (1200 * VIEWPORT.scale) / 2;
+    const synthCenterY = (800 * VIEWPORT.scale) / 2;
+
+    VIEWPORT.x = centerX - synthCenterX;
+    VIEWPORT.y = centerY - synthCenterY; // Slightly shift up for better visibility? Maybe not.
+
+    updateTransform();
 }

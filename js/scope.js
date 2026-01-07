@@ -545,7 +545,7 @@ function openScope() {
     const toggleBtn = document.getElementById('scopeToggle');
 
     win.style.display = 'flex';
-    toggleBtn.classList.add('active');
+    toggleBtn.classList.add('btn-active');
 
     if (!scopeAnalyser1) initScope();
     resetScopeBuffers();
@@ -561,7 +561,7 @@ function closeScope() {
     const toggleBtn = document.getElementById('scopeToggle');
 
     win.style.display = 'none';
-    toggleBtn.classList.remove('active');
+    toggleBtn.classList.remove('btn-active');
 
     // Stop the RAF Loop to save CPU
     isScopeRunning = false;

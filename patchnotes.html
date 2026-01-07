@@ -27,6 +27,13 @@
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
+                <button id="labelsToggle" class="toolbar-btn btn-active" title="Toggle Labels">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <!-- <span class="hidden sm:inline">Labels</span> -->
+                </button>
                 <button id="fullscreenToggle" class="toolbar-btn" title="Full Screen">
                     <svg viewBox="0 0 24 24">
                         <path
@@ -233,6 +240,7 @@
 
     <ul id="contextMenu">
         <li data-action="reset">Reset to Default</li>
+        <li data-action="editLabel" data-type="component" class="hidden">Edit Label...</li>
         <li data-action="labelCable" data-type="cable" class="hidden">Add Label</li>
         <li data-action="removeCable" data-type="cable" class="hidden text-red">Remove Cable</li>
         <li data-action="addNote">Add Note Here</li>

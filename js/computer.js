@@ -80,6 +80,8 @@ function swapComputerCard(typeIdOrName) {
         }, 50);
     }
 
+    if (typeof renderComponentLabels === 'function') renderComponentLabels();
+
     // Check historyIndex to ensure we are initialized before saving state
     if (typeof historyIndex !== 'undefined' && historyIndex >= 0) saveState();
 }

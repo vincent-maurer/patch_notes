@@ -814,12 +814,12 @@ function setupRecorderUI() {
     document.getElementById('recorderToggle').addEventListener('click', () => {
         const isHidden = win.style.display === 'none' || win.style.display === '';
         win.style.display = isHidden ? 'flex' : 'none';
-        document.getElementById('recorderToggle').classList.toggle('active', isHidden);
+        document.getElementById('recorderToggle').classList.toggle('btn-active', isHidden);
         if (isHidden && !TAPE.masterGain) initTape();
     });
     document.getElementById('closeRecorder').addEventListener('click', () => {
         win.style.display = 'none';
-        document.getElementById('recorderToggle').classList.remove('active');
+        document.getElementById('recorderToggle').classList.remove('btn-active');
     });
 
     // 2. Settings Menu

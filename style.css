@@ -663,11 +663,26 @@ textarea#globalNotesArea {
     width: 2.4%;
     height: 0;
     padding-bottom: 2.2%;
+    background: transparent;
+    border: none;
+    transition: all 0.1s;
+    position: absolute;
+}
+
+.jack::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, -50%);
     background: var(--jack-inner);
     border: 2px solid var(--ink);
     border-radius: 50%;
-    transition: all 0.1s;
     opacity: 0.3;
+    transition: all 0.1s;
+    z-index: -1;
 }
 
 /* CRITICAL FIX: Z-Index 100 puts Jacks ABOVE the Cable SVG (80) */
@@ -675,19 +690,19 @@ textarea#globalNotesArea {
     z-index: 100 !important;
 }
 
-.jack:hover {
+.jack:hover::before {
     opacity: 0.8;
     box-shadow: 0 0 8px var(--jack-inner);
     transform: translate(-50%, -50%) scale(1.1);
 }
 
-.jack.active {
+.jack.active::before {
     opacity: 0.9;
     box-shadow: 0 0 10px 3px #fcd34d;
     border-color: #fcd34d;
 }
 
-.jack.active-target {
+.jack.active-target::before {
     background-color: var(--jack-inner) !important;
     border-color: #fcd34d !important;
     box-shadow: 0 0 10px rgba(253, 211, 77, 0.6) !important;
@@ -704,7 +719,7 @@ textarea#globalNotesArea {
     background-color: transparent;
     border-radius: 50%;
     height: 0;
-    opacity: 0.6;
+    opacity: 1;
     transition: opacity 0.3s ease;
     cursor: ns-resize;
     z-index: 20;
@@ -736,15 +751,19 @@ textarea#globalNotesArea {
     transform: rotate(calc(var(--angle) * 1deg));
     will-change: auto !important;
     backface-visibility: visible !important;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
 }
 
-.is-touched {
+.is-touched .knob-img,
+.is-touched .switch-handle,
+.is-touched::before {
     opacity: 1.0 !important;
 }
 
-.knob-large:hover,
-.knob-medium:hover,
-.knob-small:hover {
+.knob-large:hover .knob-img,
+.knob-medium:hover .knob-img,
+.knob-small:hover .knob-img {
     opacity: 0.9 !important;
 }
 
@@ -1057,7 +1076,7 @@ body.performance-mode .jack {
     cursor: context-menu !important;
 }
 
-body.performance-mode .jack:hover {
+body.performance-mode .jack:hover::before {
     transform: translate(-50%, -50%) !important;
     box-shadow: none !important;
     opacity: 0.3 !important;
@@ -2405,7 +2424,7 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 }
 
 .dialog-box {
-    background-color: var(--card-bg);
+    background-color: var(--pedal-bg);
     border: 2px solid var(--border-color);
     border-radius: 0.75rem;
     padding: 1.5rem;
@@ -2450,6 +2469,20 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 0.5rem;
+}
+
+.toolbar-btn.btn-active {
+    background-color: #4ade80;
+    color: #000;
+    border-color: #4ade80;
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
+body.dark-mode .toolbar-btn.btn-active {
+    background-color: #fbbf24;
+    color: #000;
+    border-color: #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
 }
 
 .dialog-buttons .toolbar-btn {
@@ -2514,7 +2547,88 @@ body.dark-mode .card-lib-btn {
     color: #fbbf24;
 }
 
+/* Light Mode Active State - Inverted/Contrasted */
+.toolbar-btn.btn-active {
+    background-color: #000;
+    color: #fff;
+    border-color: #000;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .toolbar-btn.btn-active {
+    background-color: #fbbf24;
+    color: #000;
+    border-color: #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
 body.dark-mode .card-lib-btn:hover {
     border-color: #fbbf24;
     box-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+/* --- Component Labels --- */
+.component-label {
+    position: absolute;
+    min-width: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 100%;
+    margin-top: 14px;
+    /* Increased from 6px */
+    text-align: center;
+    font-size: 11px;
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 700;
+    color: #000;
+    background-color: #ffffff !important;
+    /* Fully Opaque with !important */
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 999;
+    /* Increased z-index */
+    line-height: 1.1;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    /* Stronger shadow */
+}
+
+.component-label.visible {
+    opacity: 1 !important;
+}
+
+/* Dark Mode Support */
+body.dark-mode .component-label {
+    color: #fff;
+    background-color: #111 !important;
+    color: #fff !important;
+    border-color: #444;
+}
+
+/* Specific Adjustments */
+.component.jack .component-label {
+    margin-top: 16px;
+}
+
+.component.knob-small .component-label {
+    margin-top: 14px;
+}
+
+/* Custom Module Labels (Inputs) */
+.custom-knob-label,
+.custom-jack-label {
+    background-color: #ffffff !important;
+    border-radius: 2px;
+    opacity: 1 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .custom-knob-label,
+body.dark-mode .custom-jack-label {
+    background-color: #111 !important;
+    color: #fff !important;
 }
