@@ -3044,21 +3044,21 @@ function fitWorkspaceToScreen() {
     const winH = window.innerHeight;
 
     const workspaceW = 1200;
-    const workspaceH = 900;
+    const workspaceH = 1100;
 
-    const scaleW = (winW - 40) / workspaceW;
-    const scaleH = (winH - 40) / workspaceH;
+    const scaleW = (winW - 80) / workspaceW;
+    const scaleH = (winH - 80) / workspaceH;
 
     let scale = Math.min(scaleW, scaleH);
-    if (scale > 1.2) scale = 1.2;
+    if (scale > 1.0) scale = 1.0;
     if (scale < 0.2) scale = 0.2;
 
     VIEWPORT.scale = scale;
 
     // Center horizontally
     VIEWPORT.x = (winW - (workspaceW * scale)) / 2;
-    // Push down slightly
-    VIEWPORT.y = 20;
+    // Center vertically
+    VIEWPORT.y = Math.max(20, (winH - (workspaceH * scale)) / 2);
 
     updateViewport();
 }
@@ -4074,20 +4074,7 @@ function createCustomJack(id, label, moduleDef) {
 
 // --- GLOBAL TOGGLE FUNCTIONS ---
 
-function toggleAudio() {
-    isAudioEnabled = !isAudioEnabled;
-    const btn = document.getElementById('audioToggle');
-    if (isAudioEnabled) {
-        if (!audioCtx) initAudio();
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        btn?.classList.add('btn-active');
-        showMessage("Audio Enabled", "success");
-    } else {
-        if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
-        btn?.classList.remove('btn-active');
-        showMessage("Audio Muted", "neutral");
-    }
-}
+
 
 function toggleMic() {
     micEnabled = !micEnabled;

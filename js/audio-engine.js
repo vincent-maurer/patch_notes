@@ -566,9 +566,7 @@ async function initAudio() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         buildAudioGraph();
 
-        if (navigator.requestMIDIAccess) {
-            initMidi();
-        }
+
 
         showMessage("Audio Engine Initialized", "success");
     }
