@@ -7,328 +7,378 @@
 
 const UTILITY_PAIR_LIBRARY = [
     {
-        id: 'looper',
-        name: 'Loop Div',
-        fullName: 'Loop Divider',
-        desc: "Tom's Loop Divider alternative firmware for the Radio Music. Drum loops with pulse out beats and CV control of pitch/speed.",
+        id: 'delay',
+        name: 'Delay',
+        fullName: 'Delay',
+        desc: 'A simple audio delay with feedback. {knob} controls Delay Time. {sec} controls Feedback.',
         labels: {
-            'knob': 'Speed',
-            'in': 'L In',
-            'out': 'L Out',
-            'cv': 'CV Spd',
-            'sub': 'Select'
-        }
-    },
-    {
-        id: 'vca',
-        name: 'VCA',
-        fullName: 'Voltage Controlled Amplifier',
-        desc: 'A simple linear voltage controlled amplifier. The output is the input multiplied by a (positive) CV.',
-        labels: {
-            'knob': 'Gain',
+            'knob': 'Time',
             'in': 'Input',
             'out': 'Output',
-            'cv': 'CV Gain',
-            'sub': 'CV Amt'
-        }
-    },
-    {
-        id: 'glitch',
-        name: 'Glitch',
-        fullName: 'Glitch',
-        desc: 'Audio glitching tool. Records audio and stores ~1 second of history; playback head jumps around randomly.',
-        labels: {
-            'knob': 'Hist',
-            'in': 'Audio',
-            'out': 'Audio',
             'cv': 'CV',
-            'sub': 'Chaos'
+            'sub': 'Fdbk',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
         }
     },
     {
-        id: 'turing185',
-        name: 'Turing',
-        fullName: 'Turing 185',
-        desc: 'Tiny sequencer using ideas from the RYK M185 and the Music Thing Modular Turing Machine.',
+        id: 'euclidean',
+        name: 'Euclidean rhythms',
+        fullName: 'Euclidean rhythms',
+        desc: 'Euclidean rhythms. Audio In / Ext = Active Steps. CV In / {knob} = Steps per Bar.',
         labels: {
-            'knob': 'Prob',
-            'in': 'Clock',
-            'out': 'Gate',
-            'cv': 'CV Note',
-            'sub': 'Steps'
+            'knob': 'Steps',
+            'in': 'Active',
+            'out': 'Trig',
+            'cv': 'Steps',
+            'sub': '+1 Step',
+            'pulseIn': 'Clock',
+            'pulseOut': 'Trig'
         }
     },
     {
-        id: 'slowlfo',
-        name: 'SlowLFO',
-        fullName: 'Slow LFO',
-        desc: 'Slow phasing LFO. Pair of slow (~2 second to ~5 hour) sine-wave LFOs.',
+        id: 'bitcrush',
+        name: 'Bitcrusher',
+        fullName: 'Bitcrusher',
+        desc: 'Digital bitcrush effect. CV In and {knob} control Sample Rate. {sec} controls Bit Depth.',
         labels: {
             'knob': 'Rate',
-            'in': 'Reset',
-            'out': 'LFO 1',
-            'cv': 'LFO 2',
-            'sub': 'Phase'
-        }
-    },
-    {
-        id: 'supersaw',
-        name: 'SuperSaw',
-        fullName: 'Supersaw VCO',
-        desc: 'Stack of 8 sawtooth waves. Detune and 1V/oct pitch control.',
-        labels: {
-            'knob': 'Detune',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'V/Oct',
-            'sub': 'Mix'
-        }
-    },
-    {
-        id: 'bernoulli',
-        name: 'Bernoulli',
-        fullName: 'Bernoulli gate',
-        desc: 'Bernoulli gate. Re-implementation of (half of) Mutable Branches.',
-        labels: {
-            'knob': 'Prob',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'CV Prob',
-            'sub': 'Mode'
-        }
-    },
-    {
-        id: 'quantiser',
-        name: 'Quant',
-        fullName: 'Quantiser',
-        desc: 'A 1V/oct pitch quantiser with eight scales. Built-in sample and hold.',
-        labels: {
-            'knob': 'Scale',
-            'in': 'CV In',
-            'out': 'CV Out',
-            'cv': 'Transp',
-            'sub': 'Octave'
-        }
-    },
-    {
-        id: 'sandh',
-        name: 'S&H',
-        fullName: 'Sample and hold',
-        desc: 'A sample and hold, with random generator and slew limiting.',
-        labels: {
-            'knob': 'Slew',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'Trigger',
-            'sub': 'Source'
-        }
-    },
-    {
-        id: 'lpg',
-        name: 'LPG',
-        fullName: 'Lopass gate',
-        desc: 'Buchla-style lopass gate, with bonus five-step sequencer.',
-        labels: {
-            'knob': 'Filter',
             'in': 'Audio',
             'out': 'Audio',
-            'cv': 'CV Freq',
-            'sub': 'Atten'
+            'cv': 'Rate',
+            'sub': 'Depth',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
         }
     },
     {
-        id: 'wavefolder',
-        name: 'WaveFold',
-        fullName: 'Wavefolder',
-        desc: 'Buchla-style Wavefolder, with bonus discrete random voltage generation and clock divider.',
+        id: 'attenuvert',
+        name: 'Dual muting attenuverter',
+        fullName: 'Dual muting attenuverter',
+        desc: 'Dual attenuverter. Pulse In mutes both channels. {sec} attenuverts/inverts Ch 2.',
         labels: {
-            'knob': 'Fold',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'CV Fold',
-            'sub': 'Steps'
+            'knob': 'Gain 1',
+            'in': 'In 1',
+            'out': 'Out 1',
+            'cv': 'In 2',
+            'sub': 'Gain 2',
+            'pulseIn': 'Mute',
+            'pulseOut': 'Thru'
         }
     },
     {
-        id: 'chorus',
-        name: 'Chorus',
-        fullName: 'Chorus',
-        desc: 'A hastily written chorus/flanger effect. Knob X/Y and CV controls speed. Main knob controls tone.',
+        id: 'clockdiv',
+        name: 'Clock divider',
+        fullName: 'Clock divider',
+        desc: 'Three-channel clock divider. Audio Out=/2(3), CV Out=/4(5), Pulse Out=/8(7). {sec} controls div mode.',
         labels: {
             'knob': 'Speed',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'CV Spd',
-            'sub': 'Tone'
-        }
-    },
-    {
-        id: 'vco',
-        name: 'VCO',
-        fullName: 'VCO',
-        desc: 'A VCO with three distinct wave shapes that each smoothly transform over a range of timbres.',
-        labels: {
-            'knob': 'Offset',
-            'in': 'Timbre',
-            'out': 'Out',
-            'cv': 'V/Oct',
-            'sub': 'Shape'
-        }
-    },
-    {
-        id: 'cvmix',
-        name: 'CVMix',
-        fullName: 'CV mixer',
-        desc: 'Attenuverts and mixes two CV channels. Audio Out = (Knob X)×(Audio In) + (Main Knob)×(CV In).',
-        labels: {
-            'knob': 'Amt A',
-            'in': 'In A',
-            'out': 'Sum',
-            'cv': 'In B',
-            'sub': 'Amt B'
-        }
-    },
-    {
-        id: 'cross',
-        name: 'Cross',
-        fullName: 'Cross-switch',
-        desc: 'CV cross-connection switch. Usually Audio->AudioOut, CV->CVOut, unless triggered.',
-        labels: {
-            'knob': 'Mode',
-            'in': 'Audio',
-            'out': 'Out A',
-            'cv': 'CV In',
-            'sub': 'Trigger'
-        }
-    },
-    {
-        id: 'karplusstrong',
-        name: 'Karplus',
-        fullName: 'Karplus-Strong',
-        desc: 'Inharmonic Karplus-Strong resonator. Extends Karplus-Strong synthesis to two delay lines.',
-        labels: {
-            'knob': 'Damp',
-            'in': 'Strike',
-            'out': 'Out',
-            'cv': 'CV Damp',
-            'sub': 'Model'
-        }
-    },
-    {
-        id: 'windowcomp',
-        name: 'WinComp',
-        fullName: 'Window comparator',
-        desc: 'Defines a voltage \'window\' centred on CV input voltage, with size controlled by X/Y knob.',
-        labels: {
-            'knob': 'Width',
-            'in': 'Audio',
-            'out': 'Gate',
-            'cv': 'Center',
-            'sub': 'Mode'
-        }
-    },
-    {
-        id: 'chords',
-        name: 'Chords',
-        fullName: 'Chords',
-        desc: 'Square-wave chord generator. Eight chord types, some diatonic.',
-        labels: {
-            'knob': 'Chord',
-            'in': 'Root',
-            'out': 'Audio',
-            'cv': 'Voicing',
-            'sub': 'Invert'
-        }
-    },
-    {
-        id: 'maxrect',
-        name: 'MaxRect',
-        fullName: 'Max / rectifier',
-        desc: 'Outputs the maximum of the Audio and CV input signals (Analogue OR). CV input can be rectifier.',
-        labels: {
-            'knob': 'Atten',
-            'in': 'Audio',
-            'out': 'Max',
-            'cv': 'CV',
-            'sub': 'Mode'
+            'in': 'Clock',
+            'out': '/2',
+            'cv': '/4',
+            'sub': 'Mode',
+            'pulseIn': 'Trig',
+            'pulseOut': '/8'
         }
     },
     {
         id: 'slopesplus',
         name: 'Slopes+',
         fullName: 'Slopes+',
-        desc: 'Adds more flexible patching to Slopes. Replaces loop parts, adds random voltages.',
+        desc: 'Comparator and S&H. Audio In = Comparator Input. CV In = Max Cmp Input. Audio Out = Random S&H. {sec} = Audio S&H Control.',
         labels: {
-            'knob': 'Rnd Amt',
-            'in': 'In',
-            'out': 'Out',
-            'cv': 'Thresh',
-            'sub': 'Mode'
+            'knob': 'CV S&H',
+            'in': 'Cmp In',
+            'out': 'Rnd S&H',
+            'cv': 'Max In',
+            'sub': 'Aud S&H',
+            'pulseIn': '',
+            'pulseOut': 'FlipFlop'
         }
     },
     {
-        id: 'clockdiv',
-        name: 'ClkDiv',
-        fullName: 'Clock divider',
-        desc: 'Three-channel clock divider. Divides input clock by 2/4/8 or 3/5/7.',
-        labels: {
-            'knob': 'Speed',
-            'in': 'Clock',
-            'out': '/2',
-            'cv': '/4',
-            'sub': 'Divs'
-        }
-    },
-    {
-        id: 'attenuvert',
-        name: 'Attenuv',
-        fullName: 'Dual muting attenuverter',
-        desc: 'Two channels of attenuverter. A high signal in pulse input mutes both channels.',
+        id: 'maxrect',
+        name: 'Max / rectifier',
+        fullName: 'Max / rectifier',
+        desc: "Outputs maximum of Audio (A) and CV (B) input signals. {knob} Attenuverts Input B.",
         labels: {
             'knob': 'Atten',
-            'in': 'In',
-            'out': 'Out',
-            'cv': 'CV',
-            'sub': 'CV Amt'
+            'in': 'In A',
+            'out': 'Max',
+            'cv': 'In B',
+            'sub': '',
+            'pulseIn': '',
+            'pulseOut': 'A > 0'
         }
     },
     {
-        id: 'bitcrush',
-        name: 'BitCrush',
-        fullName: 'Bitcrusher',
-        desc: 'Digital bitcrush effect. Control over bit depth and sample rate.',
+        id: 'chords',
+        name: 'Chords',
+        fullName: 'Chords',
+        desc: 'Square-wave chord generator. {knob} sets pitch (non-standard). {sec} selects chord type.',
         labels: {
-            'knob': 'Crush',
+            'knob': 'Pitch',
+            'in': 'Pitch',
+            'out': 'Audio',
+            'cv': 'Voicing',
+            'sub': 'Type',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
+        }
+    },
+    {
+        id: 'windowcomp',
+        name: 'Window comparator',
+        fullName: 'Window comparator',
+        desc: "Defines a voltage 'window' centred on CV input voltage. Audio Out = Above, CV Out = Inside, Pulse Out = Below. {sec} controls Window Width.",
+        labels: {
+            'knob': 'Width',
+            'in': 'Input',
+            'out': 'Above',
+            'cv': 'Center',
+            'sub': 'Invert',
+            'pulseIn': 'Invert',
+            'pulseOut': 'Below'
+        }
+    },
+    {
+        id: 'karplusstrong',
+        name: 'Karplus-Strong',
+        fullName: 'Karplus-Strong',
+        desc: 'Inharmonic Karplus-Strong resonator. {sec} controls timbre. Pulse In strikes resonator.',
+        labels: {
+            'knob': 'Pitch',
+            'in': 'Strike',
+            'out': 'Reson',
+            'cv': 'Pitch',
+            'sub': 'Timbre',
+            'pulseIn': 'Strike',
+            'pulseOut': ''
+        }
+    },
+    {
+        id: 'cross',
+        name: 'Cross-switch',
+        fullName: 'Cross-switch',
+        desc: 'CV cross-connection switch. Usually Audio->Out A, CV->Out B. {sec} triggers cross-connect.',
+        labels: {
+            'knob': 'Mode',
+            'in': 'In A',
+            'out': 'Out A',
+            'cv': 'In B',
+            'sub': 'Trigger',
+            'pulseIn': 'Trig',
+            'pulseOut': ''
+        }
+    },
+    {
+        id: 'cvmix',
+        name: 'CV mixer',
+        fullName: 'CV mixer',
+        desc: 'Attenuverts and mixes two CV channels. Audio Out = A + B. CV Out = A - B.',
+        labels: {
+            'knob': 'Atten A',
+            'in': 'In A',
+            'out': 'A+B',
+            'cv': 'In B',
+            'sub': 'Atten B',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
+        }
+    },
+    {
+        id: 'vco',
+        name: 'VCO',
+        fullName: 'VCO',
+        desc: 'Three distinct wave shapes. CV In sets 1V/Oct pitch. Audio In/{sec} controls Timbre/Shape. {knob} controls Offset.',
+        labels: {
+            'knob': 'Offset',
+            'in': 'Timbre',
+            'out': 'Out',
+            'cv': 'V/Oct',
+            'sub': 'Timbre',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
+        }
+    },
+    {
+        id: 'chorus',
+        name: 'Chorus',
+        fullName: 'Chorus',
+        desc: 'Chorus/flanger effect. {knob} and CV controls speed. {sec} controls tone.',
+        labels: {
+            'knob': 'Speed',
             'in': 'Audio',
             'out': 'Audio',
-            'cv': 'CV',
-            'sub': 'Mix'
+            'cv': 'Speed',
+            'sub': 'Tone',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
         }
     },
     {
-        id: 'euclidean',
-        name: 'Euclid',
-        fullName: 'Euclidean rhythms',
-        desc: '16-step Euclidean rhythms generator. CV control over steps and pulses.',
+        id: 'wavefolder',
+        name: 'Wavefolder',
+        fullName: 'Wavefolder',
+        desc: 'Buchla-style Wavefolder. {sec} controls number of discrete voltage outputs. Pulse In triggers random voltage.',
         labels: {
-            'knob': 'Pulses',
-            'in': 'Clock',
-            'out': 'Gate',
-            'cv': 'Steps',
-            'sub': 'Rot'
+            'knob': 'Gain',
+            'in': 'Audio',
+            'out': 'Audio',
+            'cv': 'Gain',
+            'sub': 'Steps',
+            'pulseIn': 'Trig',
+            'pulseOut': '/2'
         }
     },
     {
-        id: 'delay',
-        name: 'Delay',
-        fullName: 'Delay',
-        desc: 'A simple audio delay with feedback. Good for delay times up to a second.',
+        id: 'lpg',
+        name: 'Lopass gate',
+        fullName: 'Lopass gate',
+        desc: 'Buchla-style lopass gate with bonus five-step sequencer. Pulse In pings the gate. {sec}/Ext attenuates ping.',
         labels: {
-            'knob': 'Time',
+            'knob': 'Ctrl',
+            'in': 'Audio',
+            'out': 'Audio',
+            'cv': 'Ctrl',
+            'sub': 'Atten',
+            'pulseIn': 'Ping',
+            'pulseOut': '/5'
+        }
+    },
+    {
+        id: 'sandh',
+        name: 'Sample and hold',
+        fullName: 'Sample and hold',
+        desc: 'Sample and hold with random generator and slew limiting. Audio in sampled on rising edge of Pulse in. {sec}/Ext controls slew rate.',
+        labels: {
+            'knob': 'Clock',
             'in': 'Input',
             'out': 'Output',
-            'cv': 'CV Time',
-            'sub': 'Fdbk'
+            'cv': 'CV',
+            'sub': 'Slew',
+            'pulseIn': 'Trig',
+            'pulseOut': 'Slewing'
+        }
+    },
+    {
+        id: 'quantiser',
+        name: 'Quantiser',
+        fullName: 'Quantiser',
+        desc: 'A 1V/oct pitch quantiser with eight scales. Pulse In samples input. {sec}/Ext selects scale.',
+        labels: {
+            'knob': 'Transp',
+            'in': 'CV In',
+            'out': 'CV Out',
+            'cv': 'Input',
+            'sub': 'Scale',
+            'pulseIn': 'Sample',
+            'pulseOut': 'Trig'
+        }
+    },
+    {
+        id: 'bernoulli',
+        name: 'Bernoulli gate',
+        fullName: 'Bernoulli gate',
+        desc: 'Re-implementation of (half of) Mutable Branches. {knob} controls probability. {sec} selects option.',
+        labels: {
+            'knob': 'Prob',
+            'in': 'Gate',
+            'out': 'Gate A',
+            'cv': 'Prob',
+            'sub': 'Option',
+            'pulseIn': 'Gate',
+            'pulseOut': 'Gate A'
+        }
+    },
+    {
+        id: 'supersaw',
+        name: 'Supersaw',
+        fullName: 'Supersaw',
+        desc: 'Stack of sawtooth waves. CV in is 1V/oct pitch. {knob} is pitch offset. {sec} is detune.',
+        labels: {
+            'knob': 'Offset',
+            'in': 'Input',
+            'out': 'Output',
+            'cv': 'V/Oct',
+            'sub': 'Detune',
+            'pulseIn': 'G->T In',
+            'pulseOut': 'G->T Out'
+        }
+    },
+    {
+        id: 'slowlfo',
+        name: 'Slow LFO',
+        fullName: 'Slow LFO',
+        desc: 'Pair of slow sine-wave LFOs. {sec} controls phase time. Switch sets range (5m, 1h, Reset). Pulse In resets phases.',
+        labels: {
+            'knob': 'Freq',
+            'in': 'Reset',
+            'out': 'LFO 1',
+            'cv': 'LFO 2',
+            'sub': 'Phase',
+            'pulseIn': 'Reset',
+            'pulseOut': ''
+        }
+    },
+    {
+        id: 'turing185',
+        name: 'Turing 185',
+        fullName: 'Turing 185',
+        desc: 'Tiny sequencer using ideas from the RYK M185 and Turing Machine. Control over randomness. Output quantiser controllable from single note to 12-note chromatic.',
+        labels: {
+            'knob': 'Rand',
+            'in': 'Clock',
+            'out': 'Gate',
+            'cv': 'Pitch',
+            'sub': 'Range',
+            'pulseIn': 'Step',
+            'pulseOut': 'Gate'
+        }
+    },
+    {
+        id: 'glitch',
+        name: 'Glitch',
+        fullName: 'Glitch',
+        desc: 'Audio glitching tool. Records audio and stores history; playback head jumps around randomly. {knob} controls glitch distance/speed. {sec} controls glitch type (reverse/repeat).',
+        labels: {
+            'knob': 'Speed',
+            'in': 'Audio',
+            'out': 'Audio',
+            'cv': 'Amount',
+            'sub': 'Type',
+            'pulseIn': 'Trig',
+            'pulseOut': ''
+        }
+    },
+    {
+        id: 'vca',
+        name: 'VCA',
+        fullName: 'VCA',
+        desc: 'A simple linear voltage controlled amplifier. The output is the input multiplied by a (positive) CV. {sec} controls CV amount.',
+        labels: {
+            'knob': 'Gain',
+            'in': 'Input',
+            'out': 'Output',
+            'cv': 'CV',
+            'sub': 'CV Amt',
+            'pulseIn': '',
+            'pulseOut': ''
+        }
+    },
+    {
+        id: 'looper',
+        name: 'Loop divider',
+        fullName: 'Loop divider',
+        desc: "Tom's Loop Divider alternative firmware for the Radio Music. Drum loops with pulse out beats and CV control of pitch/speed. Pulse In controls bonus percussion.",
+        labels: {
+            'knob': 'Pitch',
+            'in': 'L In',
+            'out': 'L Out',
+            'cv': 'Pitch',
+            'sub': 'Select',
+            'pulseIn': 'Perc',
+            'pulseOut': 'Div'
         }
     }
 ];

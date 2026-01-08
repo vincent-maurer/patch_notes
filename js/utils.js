@@ -607,8 +607,15 @@ function writeString(view, offset, string) {
 
 function optimizeState(raw) {
     const minComponents = {};
+    const minLabels = {};
+
     if (raw.componentStates) {
         for (const [longKey, data] of Object.entries(raw.componentStates)) {
+            // Capture Label
+            if (data.label) {
+                minLabels[getShortId(longKey)] = data.label;
+            }
+
             // Save if touched OR if a custom range is set
             if (!data.isTouched && !data.range) continue;
 
@@ -645,11 +652,13 @@ function optimizeState(raw) {
         n: raw.patchName,
         gn: raw.globalNotes,
         cs: minComponents,
+        cl: Object.keys(minLabels).length > 0 ? minLabels : undefined,
         c: minCables,
         nt: minNotes,
         aci: raw.activeCardId,
         po: raw.pedalOrder,
-        cm: raw.customModules
+        cm: raw.customModules,
+        ups: raw.utilityPairState ? [raw.utilityPairState.utilityIndexL, raw.utilityPairState.utilityIndexR] : undefined
     };
 }
 
@@ -683,6 +692,21 @@ function expandOptimizedState(min) {
         }
     }
 
+    // Restore Labels
+    if (min.cl) {
+        for (const [shortKey, label] of Object.entries(min.cl)) {
+            const longKey = getLongId(shortKey);
+            if (!components[longKey]) {
+                components[longKey] = {
+                    type: SYSTEM_CONFIG[longKey]?.type || 'knob',
+                    value: SYSTEM_CONFIG[longKey]?.defValue || 0,
+                    isTouched: false
+                };
+            }
+            components[longKey].label = label;
+        }
+    }
+
     // ... (rest of the function remains the same) ...
     const cables = (min.c || []).map(c => ({
         start: getLongId(c.s), end: getLongId(c.e), color: c.c, droopOffset: c.d, label: c.l
@@ -701,7 +725,8 @@ function expandOptimizedState(min) {
         notes: notes,
         activeCardId: min.aci || 'none',
         pedalOrder: min.po || [],
-        customModules: min.cm || []
+        customModules: min.cm || [],
+        utilityPairState: min.ups ? { utilityIndexL: min.ups[0], utilityIndexR: min.ups[1] } : null
     };
 }
 
