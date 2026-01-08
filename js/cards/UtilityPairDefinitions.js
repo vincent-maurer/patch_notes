@@ -13,10 +13,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'A simple audio delay with feedback. {knob} controls Delay Time. {sec} controls Feedback.',
         labels: {
             'knob': 'Time',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'CV',
-            'sub': 'Fdbk',
+            'audioIn': 'Signal In',
+            'audioOut': 'Sgnl Out',
+            'cvIn': 'Time',
+            'ext': 'Fdbk',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -28,11 +28,12 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Euclidean rhythms. Audio In / Ext = Active Steps. CV In / {knob} = Steps per Bar.',
         labels: {
             'knob': 'Steps',
-            'in': 'Active',
-            'out': 'Trig',
-            'cv': 'Steps',
-            'sub': '+1 Step',
+            'audioIn': 'Active',
+            'ext': 'Active',
+            'cvIn': 'Steps',
             'pulseIn': 'Clock',
+            'audioOut': 'Bar Trig',
+            'cvOut': 'Gate',
             'pulseOut': 'Trig'
         }
     },
@@ -43,10 +44,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Digital bitcrush effect. CV In and {knob} control Sample Rate. {sec} controls Bit Depth.',
         labels: {
             'knob': 'Rate',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'Rate',
-            'sub': 'Depth',
+            'audioIn': 'Signal In',
+            'audioOut': 'Sgnl Out',
+            'cvIn': 'Rate',
+            'ext': 'Depth',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -58,10 +59,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Dual attenuverter. Pulse In mutes both channels. {sec} attenuverts/inverts Ch 2.',
         labels: {
             'knob': 'Gain 1',
-            'in': 'In 1',
-            'out': 'Out 1',
-            'cv': 'In 2',
-            'sub': 'Gain 2',
+            'audioIn': 'In 1',
+            'audioOut': 'Out 1',
+            'cvIn': 'In 2',
+            'cvOut': 'Out 2',
+            'ext': 'Gain 2',
             'pulseIn': 'Mute',
             'pulseOut': 'Thru'
         }
@@ -73,12 +75,13 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Three-channel clock divider. Audio Out=/2(3), CV Out=/4(5), Pulse Out=/8(7). {sec} controls div mode.',
         labels: {
             'knob': 'Speed',
-            'in': 'Clock',
-            'out': '/2',
-            'cv': '/4',
-            'sub': 'Mode',
-            'pulseIn': 'Trig',
-            'pulseOut': '/8'
+            'audioIn': 'Input',
+            'cvIn': 'Input',
+            'pulseIn': 'Input',
+            'audioOut': '/2 /3',
+            'cvOut': '/4 /5',
+            'pulseOut': '/8 /7',
+            'ext': 'Mode',
         }
     },
     {
@@ -88,12 +91,12 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Comparator and S&H. Audio In = Comparator Input. CV In = Max Cmp Input. Audio Out = Random S&H. {sec} = Audio S&H Control.',
         labels: {
             'knob': 'CV S&H',
-            'in': 'Cmp In',
-            'out': 'Rnd S&H',
-            'cv': 'Max In',
-            'sub': 'Aud S&H',
-            'pulseIn': '',
-            'pulseOut': 'FlipFlop'
+            'audioIn': 'Cmp In',
+            'cvIn': 'Max In',
+            'pulseOut': 'Pulse',
+            'audioOut': 'Rnd S&H',
+            'cvOut': 'Rnd S&H',
+            'ext': 'S&H/Pls'
         }
     },
     {
@@ -103,12 +106,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: "Outputs maximum of Audio (A) and CV (B) input signals. {knob} Attenuverts Input B.",
         labels: {
             'knob': 'Atten',
-            'in': 'In A',
-            'out': 'Max',
-            'cv': 'In B',
-            'sub': '',
-            'pulseIn': '',
-            'pulseOut': 'A > 0'
+            'audioIn': 'In A',
+            'cvIn': 'In B',
+            'pulseOut': 'A > 0',
+            'audioOut': 'max(A,B)'
         }
     },
     {
@@ -118,10 +119,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Square-wave chord generator. {knob} sets pitch (non-standard). {sec} selects chord type.',
         labels: {
             'knob': 'Pitch',
-            'in': 'Pitch',
-            'out': 'Audio',
-            'cv': 'Voicing',
-            'sub': 'Type',
+            'cvIn': 'Pitch',
+            'audioOut': 'Audio',
+            'cvOut': 'V/oct',
+            'ext': 'Type',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -133,11 +134,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: "Defines a voltage 'window' centred on CV input voltage. Audio Out = Above, CV Out = Inside, Pulse Out = Below. {sec} controls Window Width.",
         labels: {
             'knob': 'Width',
-            'in': 'Input',
-            'out': 'Above',
-            'cv': 'Center',
-            'sub': 'Invert',
+            'audioIn': 'Input',
+            'cvIn': 'Center',
             'pulseIn': 'Invert',
+            'audioOut': 'Above',
+            'cvOut': 'Inside',
             'pulseOut': 'Below'
         }
     },
@@ -148,12 +149,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Inharmonic Karplus-Strong resonator. {sec} controls timbre. Pulse In strikes resonator.',
         labels: {
             'knob': 'Pitch',
-            'in': 'Strike',
-            'out': 'Reson',
-            'cv': 'Pitch',
-            'sub': 'Timbre',
-            'pulseIn': 'Strike',
-            'pulseOut': ''
+            'audioIn': 'Strike',
+            'audioOut': 'Reson',
+            'cvIn': 'Pitch',
+            'ext': 'Timbre',
+            'pulseIn': 'Strike'
         }
     },
     {
@@ -163,12 +163,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'CV cross-connection switch. Usually Audio->Out A, CV->Out B. {sec} triggers cross-connect.',
         labels: {
             'knob': 'Mode',
-            'in': 'In A',
-            'out': 'Out A',
-            'cv': 'In B',
-            'sub': 'Trigger',
-            'pulseIn': 'Trig',
-            'pulseOut': ''
+            'audioIn': 'In A',
+            'audioOut': 'Out A',
+            'cvIn': 'In B',
+            'cvOut': 'Out B',
+            'pulseIn': 'Cross'
         }
     },
     {
@@ -178,10 +177,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Attenuverts and mixes two CV channels. Audio Out = A + B. CV Out = A - B.',
         labels: {
             'knob': 'Atten A',
-            'in': 'In A',
-            'out': 'A+B',
-            'cv': 'In B',
-            'sub': 'Atten B',
+            'audioIn': 'In A',
+            'cvIn': 'In B',
+            'audioOut': 'A + B',
+            'cvOut': 'A - B',
+            'ext': 'Atten B',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -193,10 +193,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Three distinct wave shapes. CV In sets 1V/Oct pitch. Audio In/{sec} controls Timbre/Shape. {knob} controls Offset.',
         labels: {
             'knob': 'Offset',
-            'in': 'Timbre',
-            'out': 'Out',
-            'cv': 'V/Oct',
-            'sub': 'Timbre',
+            'cvIn': 'V/oct',
+            'audioOut': 'VCO Out',
+            'audioIn': 'Timbre',
+            'ext': 'Timbre',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -208,10 +208,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Chorus/flanger effect. {knob} and CV controls speed. {sec} controls tone.',
         labels: {
             'knob': 'Speed',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'Speed',
-            'sub': 'Tone',
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvIn': 'Speed',
+            'ext': 'Tone',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -223,12 +223,13 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Buchla-style Wavefolder. {sec} controls number of discrete voltage outputs. Pulse In triggers random voltage.',
         labels: {
             'knob': 'Gain',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'Gain',
-            'sub': 'Steps',
-            'pulseIn': 'Trig',
-            'pulseOut': '/2'
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvIn': 'Gain',
+            'pulseIn': 'Rnd/Alt',
+            'pulseOut': '/2',
+            'cvOut': 'Rnd',
+            'ext': 'Steps'
         }
     },
     {
@@ -238,12 +239,13 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Buchla-style lopass gate with bonus five-step sequencer. Pulse In pings the gate. {sec}/Ext attenuates ping.',
         labels: {
             'knob': 'Ctrl',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'Ctrl',
-            'sub': 'Atten',
-            'pulseIn': 'Ping',
-            'pulseOut': '/5'
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvIn': 'Ctrl',
+            'pulseIn': 'Ping/Seq',
+            'ext': 'Atten',
+            'pulseOut': '/5 Trig',
+            'cvOut': 'Seq Out'
         }
     },
     {
@@ -253,11 +255,12 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Sample and hold with random generator and slew limiting. Audio in sampled on rising edge of Pulse in. {sec}/Ext controls slew rate.',
         labels: {
             'knob': 'Clock',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'CV',
-            'sub': 'Slew',
             'pulseIn': 'Trig',
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvOut': 'Slew Out',
+            'ext': 'Slew',
+            'cvIn': 'Clk/Slew',
             'pulseOut': 'Slewing'
         }
     },
@@ -268,11 +271,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'A 1V/oct pitch quantiser with eight scales. Pulse In samples input. {sec}/Ext selects scale.',
         labels: {
             'knob': 'Transp',
-            'in': 'CV In',
-            'out': 'CV Out',
-            'cv': 'Input',
-            'sub': 'Scale',
+            'cvIn': 'Input',
+            'cvOut': 'Output',
             'pulseIn': 'Sample',
+            'ext': 'Scale',
             'pulseOut': 'Trig'
         }
     },
@@ -283,12 +285,12 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Re-implementation of (half of) Mutable Branches. {knob} controls probability. {sec} selects option.',
         labels: {
             'knob': 'Prob',
-            'in': 'Gate',
-            'out': 'Gate A',
-            'cv': 'Prob',
-            'sub': 'Option',
             'pulseIn': 'Gate',
-            'pulseOut': 'Gate A'
+            'cvIn': 'Prob',
+            'cvOut': 'Thru',
+            'pulseOut': 'Gate A',
+            'audioOut': 'Gate B',
+            'ext': 'Option'
         }
     },
     {
@@ -298,10 +300,9 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Stack of sawtooth waves. CV in is 1V/oct pitch. {knob} is pitch offset. {sec} is detune.',
         labels: {
             'knob': 'Offset',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'V/Oct',
-            'sub': 'Detune',
+            'audioOut': 'Output',
+            'cvIn': 'V/oct',
+            'ext': 'Detune',
             'pulseIn': 'G->T In',
             'pulseOut': 'G->T Out'
         }
@@ -313,12 +314,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Pair of slow sine-wave LFOs. {sec} controls phase time. Switch sets range (5m, 1h, Reset). Pulse In resets phases.',
         labels: {
             'knob': 'Freq',
-            'in': 'Reset',
-            'out': 'LFO 1',
-            'cv': 'LFO 2',
-            'sub': 'Phase',
-            'pulseIn': 'Reset',
-            'pulseOut': ''
+            'audioOut': 'LFO 1',
+            'cvOut': 'LFO 2',
+            'ext': 'Phase',
+            'pulseIn': 'Reset'
         }
     },
     {
@@ -328,12 +327,10 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Tiny sequencer using ideas from the RYK M185 and Turing Machine. Control over randomness. Output quantiser controllable from single note to 12-note chromatic.',
         labels: {
             'knob': 'Rand',
-            'in': 'Clock',
-            'out': 'Gate',
-            'cv': 'Pitch',
-            'sub': 'Range',
-            'pulseIn': 'Step',
-            'pulseOut': 'Gate'
+            'cvOut': 'V/oct',
+            'pulseOut': 'Trig/Gate',
+            'ext': 'Range',
+            'pulseIn': 'Step'
         }
     },
     {
@@ -343,12 +340,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'Audio glitching tool. Records audio and stores history; playback head jumps around randomly. {knob} controls glitch distance/speed. {sec} controls glitch type (reverse/repeat).',
         labels: {
             'knob': 'Speed',
-            'in': 'Audio',
-            'out': 'Audio',
-            'cv': 'Amount',
-            'sub': 'Type',
-            'pulseIn': 'Trig',
-            'pulseOut': ''
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvIn': 'Amount',
+            'pulseIn': 'Glitch',
+            'ext': 'Type'
         }
     },
     {
@@ -358,12 +354,9 @@ const UTILITY_PAIR_LIBRARY = [
         desc: 'A simple linear voltage controlled amplifier. The output is the input multiplied by a (positive) CV. {sec} controls CV amount.',
         labels: {
             'knob': 'Gain',
-            'in': 'Input',
-            'out': 'Output',
-            'cv': 'CV',
-            'sub': 'CV Amt',
-            'pulseIn': '',
-            'pulseOut': ''
+            'audioIn': 'Input',
+            'audioOut': 'Output',
+            'cvIn': 'CV'
         }
     },
     {
@@ -373,12 +366,11 @@ const UTILITY_PAIR_LIBRARY = [
         desc: "Tom's Loop Divider alternative firmware for the Radio Music. Drum loops with pulse out beats and CV control of pitch/speed. Pulse In controls bonus percussion.",
         labels: {
             'knob': 'Pitch',
-            'in': 'L In',
-            'out': 'L Out',
-            'cv': 'Pitch',
-            'sub': 'Select',
-            'pulseIn': 'Perc',
-            'pulseOut': 'Div'
+            'audioOut': 'Output',
+            'cvIn': 'Pitch',
+            'ext': 'Select',
+            'pulseOut': 'Div',
+            'pulseIn': 'Perc'
         }
     }
 ];

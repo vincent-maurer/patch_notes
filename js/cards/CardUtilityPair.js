@@ -332,6 +332,8 @@ class CardUtilityPair extends ComputerCard {
             if (util.labels.in) newLabels[`jack-audio${suffix}in`] = (Array.isArray(util.labels.in) ? util.labels.in[channel === 'L' ? 0 : 1] : util.labels.in).replace('L ', channel + ' ');
             if (util.labels.out) newLabels[`jack-audio${suffix}out`] = (Array.isArray(util.labels.out) ? util.labels.out[channel === 'L' ? 0 : 1] : util.labels.out).replace('L ', channel + ' ');
             if (util.labels.cv) newLabels[`jack-cv${suffix}in`] = Array.isArray(util.labels.cv) ? util.labels.cv[channel === 'L' ? 0 : 1] : util.labels.cv;
+            if (util.labels.cvIn) newLabels[`jack-cv${suffix}in`] = Array.isArray(util.labels.cvIn) ? util.labels.cvIn[channel === 'L' ? 0 : 1] : util.labels.cvIn;
+            if (util.labels.cvOut) newLabels[`jack-cv${suffix}out`] = Array.isArray(util.labels.cvOut) ? util.labels.cvOut[channel === 'L' ? 0 : 1] : util.labels.cvOut;
             if (util.labels.sub) {
                 const label = Array.isArray(util.labels.sub) ? util.labels.sub[channel === 'L' ? 0 : 1] : util.labels.sub;
                 if (channel === 'L') newLabels['knob-large-computer'] = label;

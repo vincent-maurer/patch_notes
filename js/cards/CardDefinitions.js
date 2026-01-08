@@ -30,14 +30,18 @@ const CARD_LIBRARY = [
         category: 'Sequencer',
         labels: {
             'knob-small-x': 'Length',
-            'knob-small-y': 'Scale',
+            'knob-small-y': 'Diviply',
             'knob-large-computer': 'Prob',
+            'switch-3way-computer': 'Scale',
             'jack-cv1out': 'Pitch',
             'jack-cv2out': 'Volt',
             'jack-pulse1out': 'Pulse',
             'jack-pulse2out': 'Clock',
-            'jack-audio1out': 'Noise',
-            'jack-audio2out': 'Bit'
+            'jack-pulse1in': 'Clock In',
+            'jack-cv1in': 'Diviply',
+            'jack-cv2in': 'Offset',
+            'jack-audio1in': 'Reset',
+            'jack-audio2in': 'Switch'
         }
     },
     {
@@ -59,7 +63,9 @@ const CARD_LIBRARY = [
             'jack-pulse1out': 'Bit 2',
             'jack-pulse2out': 'Bit 5',
             'jack-pulse1in': 'Clk Fwd',
-            'jack-pulse2in': 'Clk Back'
+            'jack-pulse2in': 'Clk Back',
+            'jack-audio1in': 'Data',
+            'jack-audio2in': 'Prob Mod'
         }
     },
     {
@@ -150,7 +156,16 @@ const CARD_LIBRARY = [
         num: '10',
         desc: "A port of Mutable Instruments Braids with a web editor.",
         class: 'CardNoOp',
-        category: 'Voice'
+        category: 'Voice',
+        labels: {
+            'knob-large-computer': 'Pitch',
+            'knob-small-x': 'Timbre',
+            'knob-small-y': 'Color',
+            'switch-3way-computer': 'Shape',
+            'jack-cv1in': 'Pitch',
+            'jack-pulse1in': 'Trigger',
+            'jack-audio1out': 'Out'
+        }
     },
     {
         id: 'goldfish',
@@ -160,12 +175,16 @@ const CARD_LIBRARY = [
         class: 'CardNoOp',
         category: 'Audio',
         labels: {
-            'knob-large-computer': 'Mix',
+            'knob-large-computer': 'Speed',
             'knob-small-x': 'Start L',
             'knob-small-y': 'Start R',
             'switch-3way-computer': 'Mode',
-            'jack-pulse1in': 'Clock',
-            'jack-pulse2in': 'Reset'
+            'jack-pulse1in': 'Trigger',
+            'jack-pulse2in': 'Reset',
+            'jack-cv1out': 'CV Mix',
+            'jack-cv2out': 'Note',
+            'jack-pulse1out': 'Pulse 1',
+            'jack-pulse2out': 'Pulse 2'
         }
     },
     {
@@ -249,7 +268,21 @@ const CARD_LIBRARY = [
         num: '22',
         desc: "A time-stretching and pitch-shifting granular processor and digital degradation playground with 2 fidelity options.",
         class: 'CardNoOp',
-        category: 'Audio'
+        category: 'Audio',
+        labels: {
+            'knob-large-computer': 'Speed/Dir',
+            'knob-small-x': 'Spread',
+            'knob-small-y': 'Size',
+            'switch-3way-computer': 'Mode',
+            'jack-cv1in': 'Pos',
+            'jack-cv2in': 'Pitch',
+            'jack-pulse1in': 'Trig',
+            'jack-pulse2in': 'Gate',
+            'jack-cv1out': 'Rnd',
+            'jack-cv2out': 'LFO',
+            'jack-pulse1out': 'Loop End',
+            'jack-pulse2out': 'Clock'
+        }
     },
     {
         id: 'slowmod',
@@ -338,7 +371,9 @@ const CARD_LIBRARY = [
             'jack-cv1in': 'Pitch',
             'jack-cv2in': 'Pos CV',
             'jack-pulse1out': 'Audio L',
-            'jack-pulse2out': 'Audio R'
+            'jack-pulse2out': 'Audio R',
+            'jack-cv1out': 'Pos Out',
+            'jack-cv2out': 'LFO Out'
         }
     },
     {
@@ -424,7 +459,10 @@ const CARD_LIBRARY = [
             'jack-cv2in': 'Seed CV',
             'jack-pulse1in': 'Reset',
             'jack-audio1in': 'Ring Mod',
-            'jack-audio2in': 'Audio In'
+            'jack-audio2in': 'Audio In',
+            'jack-cv1out': 'Static -6V',
+            'jack-cv2out': 'S&H',
+            'jack-pulse2out': 'Pulse'
         }
     },
     {
@@ -458,7 +496,13 @@ const CARD_LIBRARY = [
             'jack-cv1in': 'Transp',
             'jack-cv2in': 'Key Mod',
             'jack-cv1out': 'Root',
-            'jack-cv2out': 'Third'
+            'jack-cv2out': 'Third',
+            'jack-pulse1in': 'Pulse',
+            'jack-pulse2in': 'Loop Toggle',
+            'jack-audio1in': 'VCA In',
+            'jack-audio2in': 'VCA CV',
+            'jack-audio1out': 'Main CV',
+            'jack-audio2out': 'VCA Out'
         }
     },
     {
@@ -484,7 +528,10 @@ const CARD_LIBRARY = [
             'jack-audio1out': 'Speech',
             'jack-audio2out': 'Exciter',
             'jack-cv1out': 'Amp',
-            'jack-cv2out': 'Pitch'
+            'jack-cv2out': 'Pitch',
+            'jack-audio1in': 'Ext Exciter',
+            'jack-cv1in': 'Pitch CV',
+            'jack-cv2in': 'Speed CV'
         }
     },
     {
