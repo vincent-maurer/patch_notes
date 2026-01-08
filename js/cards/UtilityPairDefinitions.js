@@ -93,7 +93,7 @@ const UTILITY_PAIR_LIBRARY = [
             'knob': 'CV S&H',
             'audioIn': 'Cmp In',
             'cvIn': 'Max In',
-            'pulseOut': 'Pulse',
+            'pulseOut': 'FlipFlop',
             'audioOut': 'Rnd S&H',
             'cvOut': 'Rnd S&H',
             'ext': 'S&H/Pls'
