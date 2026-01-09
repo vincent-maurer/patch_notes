@@ -456,7 +456,7 @@ let scopeFrozen = false;
 let isScopeRunning = false;
 
 // Circular Scope History
-const MAX_ROLL_HISTORY = 4096;
+const MAX_ROLL_HISTORY = 131072; // ~2.7s at 48kHz
 let rollingData1 = new Float32Array(MAX_ROLL_HISTORY).fill(0);
 let rollingData2 = new Float32Array(MAX_ROLL_HISTORY).fill(0);
 let rollHead = 0;

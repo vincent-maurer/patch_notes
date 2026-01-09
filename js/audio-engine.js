@@ -542,6 +542,13 @@ function toggleAudio() {
         // Unconditionally update UI and exit to prevent the double-toggle bug.
         btn.classList.add('audio-is-running');
         btn.title = "Stop Audio Engine";
+
+        // Auto-start Scope
+        if (typeof initScope === 'function') initScope();
+        if (typeof resetScopeBuffers === 'function') resetScopeBuffers();
+        isScopeRunning = true;
+        if (typeof drawScope === 'function') requestAnimationFrame(drawScope);
+
         return;
     }
 
@@ -551,12 +558,17 @@ function toggleAudio() {
         audioCtx.suspend().then(() => {
             btn.classList.remove('audio-is-running');
             btn.title = "Start Audio Engine";
+            isScopeRunning = false;
         });
     } else if (audioCtx.state === 'suspended') {
         // Turn ON
         audioCtx.resume().then(() => {
             btn.classList.add('audio-is-running');
             btn.title = "Stop Audio Engine";
+
+            // Auto-restart Scope
+            isScopeRunning = true;
+            if (typeof drawScope === 'function') requestAnimationFrame(drawScope);
         });
     }
 }
@@ -1178,6 +1190,21 @@ function createCustomModuleNode(module) {
             gains: [whiteGain, pinkGain] // 0: White, 1: Pink
         };
     }
+    else if (type === 'scope') {
+        const s1 = audioCtx.createGain(); s1.gain.value = 1.0;
+        const s2 = audioCtx.createGain(); s2.gain.value = 1.0;
+
+        // Connect to Global Scope Analysers if they exist
+        // (Defined in scope.js/globals.js)
+        if (typeof scopeAnalyser1 !== 'undefined' && scopeAnalyser1) s1.connect(scopeAnalyser1);
+        if (typeof scopeAnalyser2 !== 'undefined' && scopeAnalyser2) s2.connect(scopeAnalyser2);
+
+        return {
+            type: 'scope',
+            inputs: [s1, s2],
+            outputs: [] // No outputs for scope
+        };
+    }
 
     return null;
 }
@@ -1516,6 +1543,13 @@ function finishBuild() {
                 if (node.gains) {
                     jackMap[`${mod.id}_out_0`] = node.gains[0]; // White
                     jackMap[`${mod.id}_out_1`] = node.gains[1]; // Pink
+                }
+            }
+            else if (node.type === 'scope') {
+                // Map inputs for the docked scope
+                if (node.inputs) {
+                    jackMap[`${mod.id}_in_0`] = node.inputs[0]; // Ch1
+                    jackMap[`${mod.id}_in_1`] = node.inputs[1]; // Ch2
                 }
             }
         });

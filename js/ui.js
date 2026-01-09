@@ -3490,6 +3490,55 @@ window.onload = function () {
 // EXTERNAL GEAR LOGIC
 // =========================================================================
 
+function addDockedScopeModule() {
+    // Check if already exists to avoid duplicates
+    if (CUSTOM_MODULES.find(m => m.id === 'dockedScope')) return;
+
+    // Create a special module config
+    const config = {
+        name: "OSCILLOSCOPE",
+        type: "scope",
+        inputs: 2,  // Ch1, Ch2
+        outputs: 0,
+        knobs: 0,
+        position: 'right', // Default to right rack
+        docked: true
+    };
+
+    const moduleDef = {
+        id: 'dockedScope',
+        config: config
+    };
+
+    CUSTOM_MODULES.push(moduleDef);
+    renderCustomModuleToDOM(moduleDef);
+
+    // We don't save state here necessarily, or maybe we do?
+    // If we save, we need to handle restoration.
+    // Let's assume manual toggle for now, but saving is safer.
+    saveState();
+
+    // Trigger audio graph update to connect the new inputs
+    if (typeof updateAudioGraph === 'function') updateAudioGraph();
+}
+
+function removeDockedScopeModule() {
+    const idx = CUSTOM_MODULES.findIndex(m => m.id === 'dockedScope');
+    if (idx > -1) {
+        CUSTOM_MODULES.splice(idx, 1);
+        const el = document.getElementById('dockedScope');
+        if (el) el.remove();
+        saveState();
+
+        // Disconnect audio nodes
+        if (audioNodes['dockedScope']) {
+            // Basic cleanup, full cleanup happens in buildAudioGraph or we let it linger until next rebuild
+            delete audioNodes['dockedScope'];
+        }
+        if (typeof updateAudioGraph === 'function') updateAudioGraph();
+    }
+}
+
 function initExternalGearUI() {
     const btn = document.getElementById('addGearBtn');
     const modal = document.getElementById('gearModal');
@@ -3518,12 +3567,15 @@ function initExternalGearUI() {
             const outputs = document.getElementById('gearOutputs');
             const knobs = document.getElementById('gearKnobs');
 
+            const customConfig = document.getElementById('customGearConfig');
+
             // Helper to set and disable
-            const set = (n, i, o, k, disable = true) => {
+            const set = (n, i, o, k) => {
                 if (nameInput) nameInput.value = n;
-                if (inputs) { inputs.value = i; inputs.disabled = disable; }
-                if (outputs) { outputs.value = o; outputs.disabled = disable; }
-                if (knobs) { knobs.value = k; knobs.disabled = disable; }
+                if (inputs) { inputs.value = i; }
+                if (outputs) { outputs.value = o; }
+                if (knobs) { knobs.value = k; }
+                if (customConfig) customConfig.style.display = 'none';
             };
 
             switch (type) {
@@ -3545,7 +3597,11 @@ function initExternalGearUI() {
                 case 'noise':
                     set('Noise', 0, 2, 1);
                     break;
+                case 'scope': // Scope
+                    set('Oscilloscope', 2, 0, 0);
+                    break;
                 default: // Custom
+                    if (customConfig) customConfig.style.display = 'block';
                     if (inputs) inputs.disabled = false;
                     if (outputs) outputs.disabled = false;
                     if (knobs) knobs.disabled = false;
@@ -3553,6 +3609,9 @@ function initExternalGearUI() {
                     break;
             }
         });
+
+        // Trigger generic change to set initial state
+        typeSelect.dispatchEvent(new Event('change'));
     }
 
     // Confirm Add
@@ -3607,6 +3666,12 @@ function initExternalGearUI() {
         // We need to pass these labels in a way that addCustomModule can apply them.
         // Let's pass a `presetLabels` object in the config.
 
+        if (type === 'scope') {
+            if (typeof addDockedScopeModule === 'function') addDockedScopeModule();
+            modal.classList.remove('visible');
+            return;
+        }
+
         addCustomModule({ name, type, inputs, outputs, knobs, presetLabels: { jacks: jackLabels, knobs: knobLabels } });
         modal.classList.remove('visible');
     });
@@ -3631,6 +3696,8 @@ function addCustomModule(config) {
     // 3. Save State implicitly
     showMessage("Added " + config.name, "success");
     if (typeof updateAudioGraph === 'function') updateAudioGraph();
+
+    return moduleUUID;
 }
 
 function renderCustomModuleToDOM(moduleDef) {
@@ -3873,17 +3940,150 @@ function renderCustomModuleToDOM(moduleDef) {
 
     deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (await CustomDialog.confirm(`Remove ${name}?`)) {
-            removeCustomModule(id);
+
+        if (config.type === 'scope') {
+            // Special handling for scope undock
+            if (typeof toggleDockMode === 'function') toggleDockMode();
+        } else {
+            if (await CustomDialog.confirm(`Remove ${name}?`)) {
+                removeCustomModule(id);
+            }
         }
     });
+
     deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.color = '#ef4444');
     deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.color = 'var(--text-muted)');
 
     header.appendChild(leftControls);
-    header.appendChild(title);
+    // Use a container for the title to push close button to the end
+    const titleContainer = document.createElement('div');
+    titleContainer.style.flex = '1';
+    titleContainer.style.background = 'transparent';
+    titleContainer.style.display = 'flex';
+    titleContainer.style.justifyContent = 'center';
+    titleContainer.appendChild(title);
+    header.appendChild(titleContainer);
+
     header.appendChild(deleteBtn);
     modEl.appendChild(header);
+
+    // --- BODY CONTENT ---
+    const body = document.createElement('div');
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column'; // Stack rows
+    body.style.gap = '8px';
+    body.style.alignItems = 'center';
+    modEl.appendChild(body);
+
+    // --- SCOPE CANVAS (Special Case) ---
+    if (config.type === 'scope') {
+        const canContainer = document.createElement('div');
+        canContainer.style.width = '180px'; // Matched to standard module width
+        canContainer.style.height = '120px'; // Adjusted aspect ratio
+        canContainer.style.backgroundColor = '#111';
+        canContainer.style.border = '1px solid #444';
+        canContainer.style.marginBottom = '4px';
+        canContainer.style.position = 'relative';
+
+        const cvs = document.createElement('canvas');
+        cvs.id = 'dockedScopeCanvas';
+        cvs.style.width = '100%';
+        cvs.style.height = '100%';
+        canContainer.appendChild(cvs);
+
+        body.appendChild(canContainer);
+
+        // Control Row
+        const ctrlRow = document.createElement('div');
+        ctrlRow.style.display = 'flex';
+        ctrlRow.style.gap = '8px';
+        ctrlRow.style.width = '100%';
+        ctrlRow.style.justifyContent = 'center';
+        ctrlRow.style.alignItems = 'center';
+
+        // Freeze Button
+        const freezeBtn = document.createElement('button');
+        freezeBtn.className = 'scope-btn';
+        freezeBtn.textContent = '❄';
+        freezeBtn.title = 'Freeze';
+        freezeBtn.style.padding = '0px 8px';
+        freezeBtn.style.height = '20px';
+        freezeBtn.style.minWidth = '24px';
+        freezeBtn.onclick = () => {
+            scopeFrozen = !scopeFrozen;
+            freezeBtn.classList.toggle('active-mode', scopeFrozen);
+        };
+        ctrlRow.appendChild(freezeBtn);
+
+        // Timescale Slider
+        const sliderContainer = document.createElement('div');
+        sliderContainer.style.display = 'flex';
+        sliderContainer.style.alignItems = 'center';
+        sliderContainer.style.gap = '4px';
+
+        const sliderLabel = document.createElement('span');
+        sliderLabel.textContent = 'Time:';
+        sliderLabel.style.color = '#aaa';
+        sliderLabel.style.fontFamily = 'monospace';
+        sliderLabel.style.fontSize = '10px';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = '0';
+        slider.max = '100';
+        slider.step = '1';
+        slider.value = '50';
+        slider.id = 'dockedScopeZoom';
+        slider.style.display = 'none';
+
+        const btnMinus = document.createElement('button');
+        btnMinus.textContent = '-';
+        btnMinus.className = 'scope-btn';
+        btnMinus.style.width = '20px';
+        btnMinus.style.height = '20px';
+        btnMinus.style.padding = '0';
+
+        const btnPlus = document.createElement('button');
+        btnPlus.textContent = '+';
+        btnPlus.className = 'scope-btn';
+        btnPlus.style.width = '20px';
+        btnPlus.style.height = '20px';
+        btnPlus.style.padding = '0';
+
+        const valDisplay = document.createElement('span');
+        valDisplay.textContent = '50';
+        valDisplay.style.color = '#ccc';
+        valDisplay.style.fontSize = '10px';
+        valDisplay.style.minWidth = '24px';
+        valDisplay.style.textAlign = 'center';
+
+        const updateZoom = (delta) => {
+            let val = parseInt(slider.value);
+            val += delta;
+            if (val < 0) val = 0;
+            if (val > 100) val = 100;
+            slider.value = val;
+
+            if (val > 80) valDisplay.textContent = "Roll";
+            else valDisplay.textContent = val;
+
+            // Trigger update just like the slider did
+            if (typeof setScopeZoom === 'function') setScopeZoom(val);
+        };
+
+        btnMinus.onclick = () => updateZoom(-5); // Step by 5
+        btnPlus.onclick = () => updateZoom(5);
+
+        sliderContainer.appendChild(sliderLabel);
+        sliderContainer.appendChild(btnMinus);
+        sliderContainer.appendChild(valDisplay);
+        sliderContainer.appendChild(btnPlus);
+        sliderContainer.appendChild(slider);
+        ctrlRow.appendChild(sliderContainer);
+
+        body.appendChild(ctrlRow);
+    }
+
 
     // Controls Container (Knobs) - Use Grid for alignment
     if (knobs > 0) {

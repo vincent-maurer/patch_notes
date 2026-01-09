@@ -9,6 +9,12 @@
    ========================================================================= */
 
 let lastTriggerIndex = 0;
+let isDocked = false; // NEW: Docked State
+let scopeMsgZoom = 1.0; // 1.0 = Full Buffer
+
+function setScopeZoom(val) {
+    scopeMsgZoom = val;
+}
 
 function resetScopeBuffers() {
     // Clear real-time buffers
@@ -52,7 +58,9 @@ function initScope() {
         scopeFreq2 = new Uint8Array(scopeBufferLength);
     }
 
-    if (!activeProbes[0] && !activeProbes[1]) {
+    // In docked mode, we don't auto-connect activeProbes here
+    // effectively leaving it up to the patch cables
+    if (!isDocked && !activeProbes[0] && !activeProbes[1]) {
         updateScopeConnection();
     }
 }
@@ -63,6 +71,8 @@ function initScope() {
 
 function updateScopeConnection() {
     if (!audioCtx) return;
+    if (isDocked) return; // DOCKED MODE: Connections handled by Patch Cables
+
 
     // Define map of Jack ID -> Audio Node
     globalJackMap = {
@@ -148,11 +158,17 @@ function connectProbeToScope(jackId, channel) {
    VISUALIZATION LOOP (CANVAS DRAWING)
    ========================================================================= */
 
-function drawScope() {
-    if (!isScopeRunning) return;
+function getScopeCanvas() {
+    if (isDocked) return document.getElementById('dockedScopeCanvas');
+    return document.getElementById('scopeCanvas');
+}
 
-    const canvas = document.getElementById('scopeCanvas');
+function drawScope() {
+    if (!isScopeRunning && !isDocked) return;
+
+    const canvas = getScopeCanvas();
     if (!canvas) return;
+
 
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
@@ -300,6 +316,14 @@ function drawScope() {
         }
     }
 
+
+    // --- 4. DATA PROCESSING & DRAWING ---
+
+    // Unified Slider Logic: Use Docked or Floating slider
+    const slider = isDocked ? document.getElementById('dockedScopeZoom') : document.getElementById('scopeTime');
+    const sliderVal = slider ? parseInt(slider.value) : 50;
+    const isRollingMode = sliderVal > 80;
+
     // --- 4A. SPECTRUM MODE ---
     if (scopeSpecMode) {
         const drawFFT = (data, color) => {
@@ -326,7 +350,7 @@ function drawScope() {
         };
 
         drawFFT(scopeFreq1, 'rgb(74, 222, 128)');
-        if (activeProbes[1]) drawFFT(scopeFreq2, 'rgb(244, 114, 182)');
+        if (activeProbes[1] || isDocked) drawFFT(scopeFreq2, 'rgb(244, 114, 182)');
 
         ctx.fillStyle = labelColor;
         ctx.textAlign = "center";
@@ -360,12 +384,8 @@ function drawScope() {
         ctx.fillText("X-Y MODE", width - 10, 20);
     }
 
-    // --- 4C. TIME DOMAIN (Standard) ---
+    // --- 4C. TIME DOMAIN (Standard - Feature Rich) ---
     else {
-        const slider = document.getElementById('scopeTime');
-        const sliderVal = slider ? parseInt(slider.value) : 50;
-        const isRollingMode = sliderVal > 80;
-
         // --- Measurements (Vpp & Hz) ---
         if (!scopeFrozen && audioCtx) {
             // 1. Calculate Vpp (Peak-to-Peak)
@@ -424,7 +444,7 @@ function drawScope() {
                         const avgSamples = totalSamples / periodCount;
                         const hz = audioCtx.sampleRate / avgSamples;
 
-                        // Display if valid (Note: Buffer size limits low freq detection to ~6Hz)
+                        // Display if valid
                         if (hz > 5 && hz < 24000) {
                             elFreq.textContent = `Hz:${Math.round(hz)}`;
                         } else {
@@ -438,6 +458,7 @@ function drawScope() {
                 }
             }
         }
+
         if (isRollingMode) {
             const now = performance.now();
             if (!window.lastScopeDrawTime) window.lastScopeDrawTime = now;
@@ -453,11 +474,11 @@ function drawScope() {
                 let readIndex = (pointsToAdd - 1 - i) * stride;
                 if (readIndex >= scopeData1.length) readIndex = scopeData1.length - 1;
                 rollingData1[rollHead] = scopeData1[readIndex];
-                if (activeProbes[1]) rollingData2[rollHead] = scopeData2[readIndex];
+                if (activeProbes[1] || isDocked) rollingData2[rollHead] = scopeData2[readIndex];
                 rollHead = (rollHead + 1) % MAX_ROLL_HISTORY;
             }
 
-            const windowSize = 256 + ((sliderVal - 80) * 100);
+            const windowSize = 256 + ((sliderVal - 80) * 2000);
             const drawRoll = (buf, color) => {
                 ctx.beginPath();
                 ctx.strokeStyle = color;
@@ -475,7 +496,7 @@ function drawScope() {
                 ctx.stroke();
             };
             drawRoll(rollingData1, '#4ade80');
-            if (activeProbes[1]) drawRoll(rollingData2, '#f472b6');
+            if (activeProbes[1] || isDocked) drawRoll(rollingData2, '#f472b6');
         } else {
             // Triggered Snapshot Mode
             const minSamples = 32;
@@ -529,7 +550,7 @@ function drawScope() {
             };
 
             drawSnap(scopeData1, '#4ade80');
-            if (activeProbes[1]) drawSnap(scopeData2, '#f472b6');
+            if (activeProbes[1] || isDocked) drawSnap(scopeData2, '#f472b6');
         }
     }
 
@@ -541,6 +562,11 @@ function drawScope() {
    ========================================================================= */
 
 function openScope() {
+    // Exclusivity: If docked, undock (remove module) first
+    if (isDocked) {
+        if (typeof removeDockedScopeModule === 'function') removeDockedScopeModule();
+    }
+
     const win = document.getElementById('scopeWindow');
     const toggleBtn = document.getElementById('scopeToggle');
 
@@ -563,8 +589,10 @@ function closeScope() {
     win.style.display = 'none';
     toggleBtn.classList.remove('btn-active');
 
-    // Stop the RAF Loop to save CPU
-    isScopeRunning = false;
+    // Stop the RAF Loop if NOT docked
+    if (!isDocked) {
+        isScopeRunning = false;
+    }
 }
 
 function setupScopeUI() {
@@ -612,4 +640,99 @@ function setupScopeUI() {
 
     // Use global drag helper
     setupDrag(win, header);
+
+    // Dock Button
+    const dockBtn = document.getElementById('scopeDockBtn');
+    if (dockBtn) {
+        dockBtn.addEventListener('click', toggleDockMode);
+    }
 }
+
+function toggleDockMode() {
+    isDocked = !isDocked;
+    const dockBtn = document.getElementById('scopeDockBtn');
+
+    if (isDocked) {
+        // Switch to Docked
+        closeScope(); // Helper acts as "close floating" but we want to keep running
+        isScopeRunning = true; // Force run
+
+        if (dockBtn) dockBtn.textContent = "UNDOCK";
+        if (typeof addDockedScopeModule === 'function') addDockedScopeModule();
+
+        // Disconnect probes so we don't hold onto references
+        if (scopeProbes.ch1) { scopeProbes.ch1.disconnect(); scopeProbes.ch1 = null; }
+        if (scopeProbes.ch2) { scopeProbes.ch2.disconnect(); scopeProbes.ch2 = null; }
+        activeProbes = [null, null];
+
+        requestAnimationFrame(drawScope);
+
+
+    } else {
+        // Switch to Floating
+        if (typeof removeDockedScopeModule === 'function') removeDockedScopeModule();
+
+        openScope();
+        if (dockBtn) dockBtn.textContent = "DOCK";
+
+        // Re-establish probes if needed
+        updateScopeConnection();
+    }
+}
+
+// Global External Helpers
+let dockedScopeId = null;
+
+window.addDockedScopeModule = function () {
+    if (isDocked) {
+        showMessage("Oscilloscope is already docked!", "info");
+        return;
+    }
+
+    // 0. Init Scope FIRST so analysers exist for audio graph
+    if (!scopeAnalyser1) initScope();
+    resetScopeBuffers();
+
+    // 1. Define Scope Module Config
+    const config = {
+        name: 'Oscilloscope',
+        type: 'scope',
+        inputs: ['In 1', 'In 2'],
+        outputs: [],
+        knobs: [],
+        presetLabels: { jacks: ['In L', 'In R'], knobs: [] }
+    };
+
+    // 2. Add as Custom Module (triggers updateAudioGraph)
+    dockedScopeId = addCustomModule(config);
+    isDocked = true; // Set flag early
+
+    // 3. Set State & Start
+    closeScope(); // Hide floating window logic
+    isScopeRunning = true;
+    requestAnimationFrame(drawScope);
+};
+
+window.removeDockedScopeModule = function () {
+    // Check if we have a docked module to remove
+    if (dockedScopeId) {
+        // This helper (in ui.js) removes the DOM element AND cleans up cables!
+        // It also removes it from CUSTOM_MODULES array.
+        if (typeof removeCustomModule === 'function') {
+            removeCustomModule(dockedScopeId);
+        }
+        dockedScopeId = null;
+    }
+    isDocked = false;
+};
+
+window.syncDockedScopeState = function (id) {
+    if (id) {
+        dockedScopeId = id;
+        isDocked = true;
+        // Ensure analysis is running for the restored scope
+        if (!scopeAnalyser1) initScope();
+        isScopeRunning = true;
+        requestAnimationFrame(drawScope);
+    }
+};
