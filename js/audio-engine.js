@@ -917,6 +917,12 @@ function createSlopes(isExponential = false) {
         }
     };
 
+    // KEEP ALIVE: Prevents browser from stopping Worklet when output is not pulled (e.g. CV in attenuated to 0)
+    const keepAlive = audioCtx.createGain();
+    keepAlive.gain.value = 0.00001; // Tiny non-zero value
+    node.connect(keepAlive);
+    keepAlive.connect(audioCtx.destination);
+
     return {
         input: inputGain,
         cvInput: cvGain,
@@ -1048,6 +1054,134 @@ function createPedalboard(ctx) {
     return { input, output, nodes };
 }
 
+function createCustomModuleNode(module) {
+    const type = module.config.type;
+    // Default fallback if no type (legacy custom modules)
+    if (!type) return null;
+
+    if (type === 'mult') {
+        const node = audioCtx.createGain();
+        node.gain.value = 1.0;
+        return {
+            type: 'mult',
+            input: node,
+            outputs: [node, node, node] // Shared output node
+        };
+    }
+    else if (type === 'attenuator') {
+        const node = audioCtx.createGain();
+        return {
+            type: 'attenuator',
+            input: node,
+            output: node,
+            gainParam: node.gain
+        };
+    }
+    else if (type === 'vca') {
+        const vca = audioCtx.createGain();
+        vca.gain.value = 0; // Default to 0, controlled by Knob + CV
+
+        const cvInput = audioCtx.createGain();
+        cvInput.connect(vca.gain);
+
+        return {
+            type: 'vca',
+            input: vca,
+            output: vca,
+            cvInput: cvInput,
+            gainParam: vca.gain, // Direct bias
+            cvAmtParam: cvInput.gain
+        };
+    }
+    else if (type === 'midi') {
+        // Access global MIDI nodes if valid
+        return {
+            type: 'midi',
+            outputs: [
+                audioNodes['Midi_Pitch'] || null, // Pitch Node (ConstantSource)
+                audioNodes['Midi_Gate'] || null,   // Gate Node (ConstantSource)
+                null, // Velocity
+                null  // Clock
+            ]
+        };
+    } // Close midi block
+
+    else if (type === 'mixer') {
+        const out = audioCtx.createGain();
+        const in1 = audioCtx.createGain();
+        const in2 = audioCtx.createGain();
+        const in3 = audioCtx.createGain();
+
+        in1.connect(out);
+        in2.connect(out);
+        in3.connect(out);
+
+        return {
+            type: 'mixer',
+            inputs: [in1, in2, in3],
+            input: in1, // Default for generic catch, but we use 'inputs' array
+            output: out,
+            gains: [in1.gain, in2.gain, in3.gain]
+        };
+    }
+    else if (type === 'noise') {
+        const master = audioCtx.createGain();
+
+        // White Noise
+        const white = audioCtx.createBufferSource();
+        const bSize = audioCtx.sampleRate * 5; // 5 seconds
+        const bWhite = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+        const dWhite = bWhite.getChannelData(0);
+        for (let i = 0; i < bSize; i++) dWhite[i] = (Math.random() * 2 - 1);
+        white.buffer = bWhite;
+        white.loop = true;
+        white.start();
+
+        // Pink Noise (Approximation)
+        const pink = audioCtx.createBufferSource();
+        const bPink = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+        const dPink = bPink.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bSize; i++) {
+            const whiteVal = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + whiteVal * 0.0555179;
+            b1 = 0.99332 * b1 + whiteVal * 0.0750759;
+            b2 = 0.96900 * b2 + whiteVal * 0.1538520;
+            b3 = 0.86650 * b3 + whiteVal * 0.3104856;
+            b4 = 0.55000 * b4 + whiteVal * 0.5329522;
+            b5 = -0.7616 * b5 - whiteVal * 0.0168980;
+            dPink[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + whiteVal * 0.5362;
+            dPink[i] *= 0.11; // Compensation
+            b6 = whiteVal * 0.115926;
+        }
+        pink.buffer = bPink;
+        pink.loop = true;
+        pink.start();
+
+        const whiteGain = audioCtx.createGain();
+        whiteGain.gain.value = 0.1; // Reduce base level significantly
+        const pinkGain = audioCtx.createGain();
+        pinkGain.gain.value = 0.1;
+
+        white.connect(whiteGain);
+        pink.connect(pinkGain);
+
+        whiteGain.connect(master);
+        pinkGain.connect(master);
+
+        return {
+            type: 'noise',
+            output: master,
+            whiteNode: white,
+            pinkNode: pink,
+            masterGain: master.gain,
+            gains: [whiteGain, pinkGain] // 0: White, 1: Pink
+        };
+    }
+
+    return null;
+}
+
 /* =========================================================================
    AUDIO GRAPH BUILDING & ROUTING
    ========================================================================= */
@@ -1174,7 +1308,11 @@ function finishBuild() {
             if (audioNodes['Scratch_Filter']) gNoise.connect(audioNodes['Scratch_Filter']);
         }
         audioNodes['Chassis_Filter'].connect(audioNodes['Chassis_Gain']);
+
         audioNodes['Scratch_Filter'].connect(audioNodes['Scratch_Gain']);
+
+
+
 
         // --- Mixer Output ---
         audioNodes['Mixer_Ch1'] = audioCtx.createGain(); audioNodes['Mixer_Ch2'] = audioCtx.createGain();
@@ -1217,8 +1355,40 @@ function finishBuild() {
         }
     }
 
+    // --- Ensure Custom Modules Exist (Dynamic Add) ---
+    // Always recreate custom modules to ensure fresh state and correct internal routing
+    // --- Ensure Custom Modules Exist (Dynamic Add) ---
+    // CLEANUP OLD MODULES FIRST to prevent accumulation/leaks
+    if (typeof CUSTOM_MODULES !== 'undefined') {
+        CUSTOM_MODULES.forEach(mod => {
+            const oldNode = audioNodes[mod.id];
+            if (oldNode) {
+                // Disconnect standard IO
+                if (oldNode.input) { try { oldNode.input.disconnect(); } catch (e) { } }
+                if (oldNode.gains) oldNode.gains.forEach(g => { try { g.disconnect(); } catch (e) { } });
+                if (oldNode.output) { try { oldNode.output.disconnect(); } catch (e) { } }
+
+                // STOP Sources (Critical for Noise/Buffers)
+                if (oldNode.whiteNode) { try { oldNode.whiteNode.stop(); } catch (e) { } }
+                if (oldNode.pinkNode) { try { oldNode.pinkNode.stop(); } catch (e) { } }
+
+                // Generic Output cleanup if array
+                if (oldNode.outputs) oldNode.outputs.forEach(o => { try { if (o) o.disconnect(); } catch (e) { } });
+            }
+
+            // Always create new to ensure fresh state and correct internal routing
+            const node = createCustomModuleNode(mod);
+            if (node) {
+                audioNodes[mod.id] = node;
+            }
+        });
+    }
+
     // 2. DISCONNECT
     const disconnectNode = (n) => { try { if (n) n.disconnect(); } catch (e) { } };
+
+    // Note: We do NOT disconnect custom modules here because we just recreated them.
+    // Disconnecting them would break their internal wiring (e.g. CV Input connected to Gain Param).
 
     disconnectNode(audioNodes['Stereo_Line_In']);
     disconnectNode(audioNodes['Stereo_L_Pre']);
@@ -1306,7 +1476,50 @@ function finishBuild() {
         'jack-stereoIn2Out': audioNodes['Stereo_R_Pre'],
         'jack-mixerLout': audioNodes['Mix_Out_L'],
         'jack-mixerRout': audioNodes['Mix_Out_R'],
+
     };
+
+    // --- Dynamic Jack Mapping for Custom Modules ---
+    if (typeof CUSTOM_MODULES !== 'undefined') {
+        CUSTOM_MODULES.forEach(mod => {
+            const node = audioNodes[mod.id];
+            if (!node) return;
+
+            if (node.type === 'mult') {
+                jackMap[`${mod.id}_in_0`] = node.input;
+                jackMap[`${mod.id}_out_0`] = node.outputs[0];
+                jackMap[`${mod.id}_out_1`] = node.outputs[1];
+                jackMap[`${mod.id}_out_2`] = node.outputs[2];
+            }
+            else if (node.type === 'attenuator') {
+                jackMap[`${mod.id}_in_0`] = node.input;
+                jackMap[`${mod.id}_out_0`] = node.output;
+            }
+            else if (node.type === 'vca') {
+                jackMap[`${mod.id}_in_0`] = node.input;    // Signal
+                jackMap[`${mod.id}_in_1`] = node.cvInput;  // CV
+                jackMap[`${mod.id}_out_0`] = node.output;
+            }
+            else if (node.type === 'midi') {
+                if (node.outputs[0]) jackMap[`${mod.id}_out_0`] = node.outputs[0]; // Pitch
+                if (node.outputs[1]) jackMap[`${mod.id}_out_1`] = node.outputs[1]; // Gate
+            }
+            else if (node.type === 'mixer') {
+                if (node.inputs) {
+                    jackMap[`${mod.id}_in_0`] = node.inputs[0];
+                    jackMap[`${mod.id}_in_1`] = node.inputs[1];
+                    jackMap[`${mod.id}_in_2`] = node.inputs[2];
+                }
+                jackMap[`${mod.id}_out_0`] = node.output;
+            }
+            else if (node.type === 'noise') {
+                if (node.gains) {
+                    jackMap[`${mod.id}_out_0`] = node.gains[0]; // White
+                    jackMap[`${mod.id}_out_1`] = node.gains[1]; // Pink
+                }
+            }
+        });
+    }
 
     connectPedalChain();
 
@@ -1590,6 +1803,8 @@ function updateAmpMeter() {
 
     const displayLevel = smoothAmpLevel * 4.5;
 
+
+
     for (let i = 1; i <= 4; i++) {
         const led = document.getElementById(`led-amp-${i}`);
         if (led) {
@@ -1839,6 +2054,48 @@ function updateAudioParams() {
     const revActive = componentStates['pedal_reverb_active']?.value === 1;
     const rMix = revActive ? getKnobValue('p_rev_mix', 0, 1) : 0;
     safeParam(pb.reverb.mix.gain, rMix, now);
+
+    // --- Custom Module Params ---
+    if (typeof CUSTOM_MODULES !== 'undefined') {
+        CUSTOM_MODULES.forEach(mod => {
+            const node = audioNodes[mod.id];
+            if (!node) return;
+
+            if (node.type === 'attenuator') {
+                const val = getKnobValue(`${mod.id}_knob_0`, 0, 1);
+                safeParam(node.gainParam, val, now);
+            }
+            else if (node.type === 'vca') {
+                // Knob 0: Main Bias (0 to 1)
+                const bias = getKnobValue(`${mod.id}_knob_0`, 0, 1);
+                // Knob 1: CV Amount (0 to 1) -> Allow boosting for weak signals? Let's stick to 0-1 for now.
+                const cv = getKnobValue(`${mod.id}_knob_1`, 0, 1);
+
+                // console.log(`VCA ${mod.id}: Bias ${bias.toFixed(2)}, CV Amt ${cv.toFixed(2)}`);
+
+                safeParam(node.gainParam, bias, now);
+                safeParam(node.cvAmtParam, cv, now);
+            }
+            else if (node.type === 'mixer') {
+                // 3 Knobs for 3 Input Gains
+                const vol1 = getKnobValue(`${mod.id}_knob_0`, 0, 1.5); // Boost allow
+                const vol2 = getKnobValue(`${mod.id}_knob_1`, 0, 1.5);
+                const vol3 = getKnobValue(`${mod.id}_knob_2`, 0, 1.5);
+
+                safeParam(node.gains[0], vol1, now);
+                safeParam(node.gains[1], vol2, now);
+                safeParam(node.gains[2], vol3, now);
+            }
+            else if (node.type === 'noise') {
+                // Knob 0: Master Level
+                const lvl = getKnobValue(`${mod.id}_knob_0`, 0, 1.0);
+
+                // Update both output gains
+                safeParam(node.gains[0].gain, lvl, now);
+                safeParam(node.gains[1].gain, lvl, now);
+            }
+        });
+    }
 }
 
 /* =========================================================================

@@ -3495,6 +3495,7 @@ function initExternalGearUI() {
     const modal = document.getElementById('gearModal');
     const closeBtn = document.getElementById('closeGearModal');
     const confirmBtn = document.getElementById('addGearConfirm');
+    const typeSelect = document.getElementById('gearType');
 
     if (!btn || !modal) return;
 
@@ -3508,15 +3509,105 @@ function initExternalGearUI() {
         modal.classList.remove('visible');
     });
 
+    // Handle Type Selection
+    if (typeSelect) {
+        typeSelect.addEventListener('change', (e) => {
+            const type = e.target.value;
+            const nameInput = document.getElementById('gearName');
+            const inputs = document.getElementById('gearInputs');
+            const outputs = document.getElementById('gearOutputs');
+            const knobs = document.getElementById('gearKnobs');
+
+            // Helper to set and disable
+            const set = (n, i, o, k, disable = true) => {
+                if (nameInput) nameInput.value = n;
+                if (inputs) { inputs.value = i; inputs.disabled = disable; }
+                if (outputs) { outputs.value = o; outputs.disabled = disable; }
+                if (knobs) { knobs.value = k; knobs.disabled = disable; }
+            };
+
+            switch (type) {
+                case 'mult':
+                    set('Mult', 1, 3, 0);
+                    break;
+                case 'attenuator':
+                    set('Attenuator', 1, 1, 1);
+                    break;
+                case 'vca':
+                    set('VCA', 2, 1, 2);
+                    break;
+                case 'midi':
+                    set('MIDI Interface', 0, 4, 0);
+                    break;
+                case 'mixer':
+                    set('Mixer', 3, 1, 3);
+                    break;
+                case 'noise':
+                    set('Noise', 0, 2, 1);
+                    break;
+                default: // Custom
+                    if (inputs) inputs.disabled = false;
+                    if (outputs) outputs.disabled = false;
+                    if (knobs) knobs.disabled = false;
+                    nameInput.value = "";
+                    break;
+            }
+        });
+    }
+
     // Confirm Add
     confirmBtn.addEventListener('click', () => {
+        const type = document.getElementById('gearType') ? document.getElementById('gearType').value : 'custom';
         const name = document.getElementById('gearName').value || "Module";
-        const inputs = parseInt(document.getElementById('gearInputs').value) || 0;
-        const outputs = parseInt(document.getElementById('gearOutputs').value) || 0;
-        const knobs = parseInt(document.getElementById('gearKnobs').value) || 0;
-        // No Labels input anymore
 
-        addCustomModule({ name, inputs, outputs, knobs });
+        let inputs = parseInt(document.getElementById('gearInputs').value) || 0;
+        let outputs = parseInt(document.getElementById('gearOutputs').value) || 0;
+        let knobs = parseInt(document.getElementById('gearKnobs').value) || 0;
+
+        let jackLabels = {};
+        let knobLabels = {};
+
+        // Apply Preset Labels
+        if (type === 'mult') {
+            jackLabels[`_in_0`] = "In";
+            jackLabels[`_out_0`] = "Out 1";
+            jackLabels[`_out_1`] = "Out 2";
+            jackLabels[`_out_2`] = "Out 3";
+        } else if (type === 'attenuator') {
+            jackLabels[`_in_0`] = "In";
+            jackLabels[`_out_0`] = "Out";
+            knobLabels[`_knob_0`] = "Level";
+        } else if (type === 'vca') {
+            jackLabels[`_in_0`] = "Signal";
+            jackLabels[`_in_1`] = "CV";
+            jackLabels[`_out_0`] = "Out";
+            knobLabels[`_knob_0`] = "Gain";
+            knobLabels[`_knob_1`] = "CV Amt";
+        } else if (type === 'midi') {
+            jackLabels[`_out_0`] = "Pitch";
+            jackLabels[`_out_1`] = "Gate";
+            jackLabels[`_out_2`] = "Vel";
+            jackLabels[`_out_3`] = "Clock";
+        } else if (type === 'mixer') {
+            jackLabels[`_in_0`] = "In 1";
+            jackLabels[`_in_1`] = "In 2";
+            jackLabels[`_in_2`] = "In 3";
+            jackLabels[`_out_0`] = "Mix Out";
+            knobLabels[`_knob_0`] = "Vol 1";
+            knobLabels[`_knob_1`] = "Vol 2";
+            knobLabels[`_knob_2`] = "Vol 3";
+        } else if (type === 'noise') {
+            jackLabels[`_out_0`] = "White";
+            jackLabels[`_out_1`] = "Pink";
+            knobLabels[`_knob_0`] = "Level";
+        }
+
+        // We pass a "labels" object wrapper or pre-generate IDs? 
+        // The addCustomModule function generates IDs based on the module name/UUID. 
+        // We need to pass these labels in a way that addCustomModule can apply them.
+        // Let's pass a `presetLabels` object in the config.
+
+        addCustomModule({ name, type, inputs, outputs, knobs, presetLabels: { jacks: jackLabels, knobs: knobLabels } });
         modal.classList.remove('visible');
     });
 }
@@ -3539,6 +3630,7 @@ function addCustomModule(config) {
 
     // 3. Save State implicitly
     showMessage("Added " + config.name, "success");
+    if (typeof updateAudioGraph === 'function') updateAudioGraph();
 }
 
 function renderCustomModuleToDOM(moduleDef) {
@@ -3572,54 +3664,143 @@ function renderCustomModuleToDOM(moduleDef) {
             sidecar.style.left = '102%'; // Position to the right
         }
 
+        // Drop Zone for Rack
+        sidecar.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            sidecar.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        });
+        sidecar.addEventListener('dragleave', () => {
+            sidecar.style.backgroundColor = 'transparent';
+        });
+        sidecar.addEventListener('drop', (e) => {
+            e.preventDefault();
+            sidecar.style.backgroundColor = 'transparent';
+            const srcId = e.dataTransfer.getData('text/plain');
+            if (srcId) {
+                // If dropped directly on the rack (not on a module), append to that rack
+                // We know which rack this IS because of 'position' variable in this scope?
+                // Wait, 'position' is from the *rendered module's* config, so this is creating a rack FOR that module.
+                // We need to ensure we only add the listener ONCE per rack? 
+                // renderCustomModuleToDOM is called for each module.
+                // If the rack already exists, 'sidecar' is returned by getElementById.
+                // We should check if we already added listeners? Or just add them idempotently.
+                // Better: The rack creation block only runs if !sidecar. Perfect.
+
+                // Update position for the dropped module
+                const mod = CUSTOM_MODULES.find(m => m.id === srcId);
+                if (mod && mod.config.position !== position) {
+                    mod.config.position = position; // 'left' or 'right'
+                    rerenderGearRacks();
+                    saveState();
+                }
+            }
+        });
+
         document.getElementById('synthContainer').appendChild(sidecar);
     }
 
     const modEl = document.createElement('div');
     modEl.className = 'external-module';
     modEl.id = id;
+    modEl.draggable = true; // Enable Drag
+
+    // Drag & Drop Events
+    modEl.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+        modEl.style.opacity = '0.4';
+    });
+    modEl.addEventListener('dragend', () => {
+        modEl.style.opacity = '1';
+        document.querySelectorAll('.external-module').forEach(m => m.style.border = '2px solid rgba(255,255,255,0.2)');
+    });
+    modEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        modEl.style.border = '2px dashed #fff';
+    });
+    modEl.addEventListener('dragleave', () => {
+        modEl.style.border = '2px solid rgba(255,255,255,0.2)';
+    });
+    modEl.addEventListener('drop', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const srcId = e.dataTransfer.getData('text/plain');
+        if (srcId && srcId !== id) {
+            const srcIdx = CUSTOM_MODULES.findIndex(m => m.id === srcId);
+            const targetIdx = CUSTOM_MODULES.findIndex(m => m.id === id);
+
+            if (srcIdx > -1) {
+                // Check if we are moving to a different rack (implicitly handled by target's position)
+                // But we need to update source item's position to match target item's position
+                const targetMod = CUSTOM_MODULES[targetIdx];
+                const srcMod = CUSTOM_MODULES[srcIdx];
+
+                if (targetMod && srcMod) {
+                    srcMod.config.position = targetMod.config.position; // Adopt target's side
+                }
+
+                const item = CUSTOM_MODULES.splice(srcIdx, 1)[0];
+                CUSTOM_MODULES.splice(targetIdx, 0, item);
+
+                rerenderGearRacks();
+                saveState();
+            }
+        }
+    });
 
     // Style adjustments for Theme and Dynamic Width
-    modEl.style.padding = '15px'; // Reduced from 25px
-    modEl.style.borderRadius = '8px';
-    modEl.style.minWidth = '280px'; // Reduced from 320px
+    modEl.style.padding = '10px'; // Compact padding
+    modEl.style.borderRadius = '6px';
+    modEl.style.minWidth = 'fit-content'; // Allow to shrink
     modEl.style.width = 'fit-content';
     modEl.style.border = '2px solid rgba(255,255,255,0.2)';
     modEl.style.position = 'relative';
     modEl.style.boxShadow = 'none';
     modEl.style.display = 'flex';
     modEl.style.flexDirection = 'column';
-    modEl.style.gap = '15px'; // Reduced from 25px
+    modEl.style.gap = '8px'; // Tighter gap
 
     // Theme Colors
     modEl.style.backgroundColor = 'var(--panel-bg)';
     modEl.style.color = 'var(--text-main)';
     modEl.style.borderColor = 'var(--toolbar-border)';
 
-    // Header Container (Title + Close)
+    // --- Window-Like Header (Drag Handle) ---
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
     header.style.alignItems = 'center';
-    header.style.marginBottom = '5px'; // Reduced from 10px
-    header.style.padding = '0 5px';
-    header.style.position = 'relative';
-    header.style.minHeight = '32px';
+    header.style.padding = '4px 8px';
+    header.style.marginBottom = '8px';
+    header.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'; // Highlighted header
+    header.style.borderRadius = '4px';
+    header.style.cursor = 'grab'; // Visual affordance
+    header.style.minHeight = '28px';
+    header.title = "Drag to Move";
+
+    // Stop drag propagation on inputs (so you can type)
+    // Actually, draggable=true on parent might prevent clicking input?
+    // We need to ensure inputs override opacity or drag start? 
+    // Usually browser handles text selection vs drag well, but let's see.
 
     const title = document.createElement('input');
     title.type = 'text';
     title.value = name;
     title.className = 'custom-module-title';
-    title.style.margin = '0 auto';
-    title.style.fontSize = '16px'; // Reduced from 20px
+    title.style.margin = '0 8px'; // Spacing
+    title.style.flexGrow = '1';
+    title.style.width = 'auto';
+    title.style.fontSize = '15px'; // Reduced slightly
     title.style.color = 'inherit';
     title.style.textTransform = 'uppercase';
     title.style.fontFamily = 'monospace';
     title.style.letterSpacing = '1px';
     title.style.fontWeight = 'bold';
     title.style.whiteSpace = 'nowrap';
-    title.style.paddingRight = '35px'; // Space for delete button
-    title.style.paddingLeft = '10px';
+    // Removed specific paddings for absolute buttons
+    title.style.padding = '0';
     title.style.background = 'transparent';
     title.style.border = '1px solid transparent';
     title.style.textAlign = 'center';
@@ -3642,27 +3823,26 @@ function renderCustomModuleToDOM(moduleDef) {
         }
     });
 
-    // Controls Container (Left side)
+    // Controls Container (Left side) - Restore L/R Button
     const leftControls = document.createElement('div');
     leftControls.style.display = 'flex';
+    leftControls.style.alignItems = 'center';
     leftControls.style.gap = '8px';
-    leftControls.style.position = 'absolute';
-    leftControls.style.left = '0';
-    leftControls.style.top = '50%';
-    leftControls.style.transform = 'translateY(-50%)';
 
     // Position Toggle Button (L/R)
     const posBtn = document.createElement('div');
     const currentPos = config.position || 'right';
-    posBtn.textContent = currentPos === 'left' ? 'L' : 'R';
-    posBtn.title = 'Toggle Left/Right';
+    posBtn.textContent = currentPos === 'left' ? '→' : '←';
+    posBtn.title = 'Move to other rack';
     posBtn.style.color = 'var(--text-muted)';
-    posBtn.style.fontSize = '14px';
+    posBtn.style.fontSize = '12px';
     posBtn.style.cursor = 'pointer';
     posBtn.style.fontWeight = 'bold';
     posBtn.style.padding = '2px 6px';
     posBtn.style.border = '1px solid var(--text-muted)';
     posBtn.style.borderRadius = '3px';
+    posBtn.style.backgroundColor = 'rgba(0,0,0,0.2)';
+
     posBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const mod = CUSTOM_MODULES.find(m => m.id === id);
@@ -3675,39 +3855,7 @@ function renderCustomModuleToDOM(moduleDef) {
     posBtn.addEventListener('mouseenter', () => posBtn.style.borderColor = 'var(--text-main)');
     posBtn.addEventListener('mouseleave', () => posBtn.style.borderColor = 'var(--text-muted)');
 
-    // Up Arrow
-    const upBtn = document.createElement('div');
-    upBtn.textContent = '↑';
-    upBtn.title = 'Move Up';
-    upBtn.style.color = 'var(--text-muted)';
-    upBtn.style.fontSize = '18px';
-    upBtn.style.cursor = 'pointer';
-    upBtn.style.lineHeight = '1';
-    upBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        moveModuleUp(id);
-    });
-    upBtn.addEventListener('mouseenter', () => upBtn.style.color = 'var(--text-main)');
-    upBtn.addEventListener('mouseleave', () => upBtn.style.color = 'var(--text-muted)');
-
-    // Down Arrow
-    const downBtn = document.createElement('div');
-    downBtn.textContent = '↓';
-    downBtn.title = 'Move Down';
-    downBtn.style.color = 'var(--text-muted)';
-    downBtn.style.fontSize = '18px';
-    downBtn.style.cursor = 'pointer';
-    downBtn.style.lineHeight = '1';
-    downBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        moveModuleDown(id);
-    });
-    downBtn.addEventListener('mouseenter', () => downBtn.style.color = 'var(--text-main)');
-    downBtn.addEventListener('mouseleave', () => downBtn.style.color = 'var(--text-muted)');
-
     leftControls.appendChild(posBtn);
-    leftControls.appendChild(upBtn);
-    leftControls.appendChild(downBtn);
 
     // Delete Button (X) - Right side
     const deleteBtn = document.createElement('div');
@@ -3716,12 +3864,12 @@ function renderCustomModuleToDOM(moduleDef) {
     deleteBtn.style.fontSize = '28px';
     deleteBtn.style.cursor = 'pointer';
     deleteBtn.style.fontWeight = 'bold';
-    deleteBtn.style.lineHeight = '0.5';
+    deleteBtn.style.lineHeight = '1';
     deleteBtn.title = "Remove Module";
-    deleteBtn.style.position = 'absolute';
-    deleteBtn.style.right = '0';
-    deleteBtn.style.top = '50%';
-    deleteBtn.style.transform = 'translateY(-50%)';
+    // deleteBtn.style.position = 'absolute'; // Removed
+    // deleteBtn.style.right = '0';
+    // deleteBtn.style.top = '50%';
+    // deleteBtn.style.transform = 'translateY(-50%)';
 
     deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -3740,18 +3888,31 @@ function renderCustomModuleToDOM(moduleDef) {
     // Controls Container (Knobs) - Use Grid for alignment
     if (knobs > 0) {
         const knobContainer = document.createElement('div');
-        knobContainer.style.display = 'grid';
-        knobContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
-        knobContainer.style.gap = '12px'; // Reduced from 20px
-        knobContainer.style.justifyItems = 'center';
-        knobContainer.style.alignItems = 'start';
-        knobContainer.style.marginBottom = '5px'; // Reduced from 10px
-        knobContainer.style.padding = '10px'; // Reduced from 15px
+        knobContainer.style.display = 'flex';
+        knobContainer.style.flexWrap = 'wrap';
+        knobContainer.style.justifyContent = 'center'; // Center knobs
+        knobContainer.style.gap = '15px'; // Consistent gap with jacks
+        knobContainer.style.alignItems = 'flex-start'; // Align top
+        knobContainer.style.marginBottom = '2px';
+        knobContainer.style.padding = '10px';
         knobContainer.style.borderRadius = '6px';
 
         for (let i = 0; i < knobs; i++) {
             const knobId = `${id}_knob_${i}`;
-            const currentLabel = config.knobLabels && config.knobLabels[knobId] ? config.knobLabels[knobId] : `P${i + 1}`;
+
+            // Priority: Existing Config > Preset Label > Default
+            let currentLabel = `P${i + 1}`;
+
+            // Check Preset Labels passed during creation (suffix match)
+            if (config.presetLabels && config.presetLabels.knobs) {
+                const suffix = `_knob_${i}`;
+                if (config.presetLabels.knobs[suffix]) currentLabel = config.presetLabels.knobs[suffix];
+            }
+
+            // Check Persisted Labels (specific ID match)
+            if (config.knobLabels && config.knobLabels[knobId]) {
+                currentLabel = config.knobLabels[knobId];
+            }
 
             if (!SYSTEM_CONFIG[knobId]) {
                 SYSTEM_CONFIG[knobId] = { type: 'knob-small', x: '0', y: '0', label: currentLabel, isCustom: true, defValue: 0 };
@@ -3768,47 +3929,51 @@ function renderCustomModuleToDOM(moduleDef) {
 
     // Jacks Container - Improved Layout with Grid
 
-    if (inputs > 0) {
-        const inContainer = document.createElement('div');
-        inContainer.style.display = 'grid';
-        inContainer.style.gridTemplateColumns = 'repeat(4, 1fr)'; // 4 Per Row
-        inContainer.style.gap = '20px';
-        inContainer.style.justifyItems = 'center';
-        inContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
-        inContainer.style.paddingTop = '15px';
+    // Jacks Container - Single Row (Flex)
+    if (inputs > 0 || outputs > 0) {
+        const jackContainer = document.createElement('div');
+        jackContainer.style.display = 'flex';
+        jackContainer.style.flexWrap = 'wrap';
+        jackContainer.style.gap = '15px';
+        jackContainer.style.justifyContent = 'center';
+        jackContainer.style.alignItems = 'center';
 
+        if (knobs > 0) {
+            jackContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
+            jackContainer.style.paddingTop = '10px';
+        }
+
+        // INPUTS
         for (let i = 0; i < inputs; i++) {
             const jackId = `${id}_in_${i}`;
-            const currentLabel = config.jackLabels && config.jackLabels[jackId] ? config.jackLabels[jackId] : `In ${i + 1}`;
+            let currentLabel = `In ${i + 1}`;
+            if (config.presetLabels && config.presetLabels.jacks) {
+                const suffix = `_in_${i}`;
+                if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
+            }
+            if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
+
             SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
             const jack = createCustomJack(jackId, currentLabel, moduleDef);
-            inContainer.appendChild(jack);
-        }
-        modEl.appendChild(inContainer);
-    }
-
-    if (outputs > 0) {
-        const outContainer = document.createElement('div');
-        outContainer.style.display = 'grid';
-        outContainer.style.gridTemplateColumns = 'repeat(4, 1fr)'; // 4 Per Row
-        outContainer.style.gap = '20px';
-        outContainer.style.justifyItems = 'center';
-
-        if (inputs > 0) {
-            // Spacing handled by parent gap
-        } else {
-            outContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
-            outContainer.style.paddingTop = '15px';
+            jackContainer.appendChild(jack);
         }
 
+        // OUTPUTS
         for (let i = 0; i < outputs; i++) {
             const jackId = `${id}_out_${i}`;
-            const currentLabel = config.jackLabels && config.jackLabels[jackId] ? config.jackLabels[jackId] : `Out ${i + 1}`;
+            let currentLabel = `Out ${i + 1}`;
+            if (config.presetLabels && config.presetLabels.jacks) {
+                const suffix = `_out_${i}`;
+                if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
+            }
+            if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
+
             SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
             const jack = createCustomJack(jackId, currentLabel, moduleDef);
-            outContainer.appendChild(jack);
+            jackContainer.appendChild(jack);
         }
-        modEl.appendChild(outContainer);
+
+        modEl.appendChild(jackContainer);
     }
 
     sidecar.appendChild(modEl);
@@ -3855,23 +4020,7 @@ function removeCablesConnectedTo(jackId) {
     cablesToRemove.forEach(c => removeCable(c.start, c.end));
 }
 
-function moveModuleUp(moduleId) {
-    const idx = CUSTOM_MODULES.findIndex(m => m.id === moduleId);
-    if (idx > 0) {
-        [CUSTOM_MODULES[idx - 1], CUSTOM_MODULES[idx]] = [CUSTOM_MODULES[idx], CUSTOM_MODULES[idx - 1]];
-        rerenderGearRacks();
-        saveState();
-    }
-}
 
-function moveModuleDown(moduleId) {
-    const idx = CUSTOM_MODULES.findIndex(m => m.id === moduleId);
-    if (idx >= 0 && idx < CUSTOM_MODULES.length - 1) {
-        [CUSTOM_MODULES[idx], CUSTOM_MODULES[idx + 1]] = [CUSTOM_MODULES[idx + 1], CUSTOM_MODULES[idx]];
-        rerenderGearRacks();
-        saveState();
-    }
-}
 
 function rerenderGearRacks() {
     // Clear both racks

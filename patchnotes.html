@@ -7,8 +7,8 @@
     <title>Patch Notes</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="images/mediumKnob.svg">
-    <link rel="shortcut icon" href="images/mediumKnob.svg">
+    <link rel="icon" type="image/svg+xml" href="images/mediumKnob_dark.svg">
+    <link rel="shortcut icon" href="images/mediumKnob_dark.svg">
 </head>
 
 <body class="min-h-screen">
@@ -20,7 +20,7 @@
             <h1
                 style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">
                 Workshop System Patch Notes</h1>
-            <div style="font-size: 0.7rem; color: var(--text-muted);">v2.2</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">v2.3</div>
         </div>
 
         <div id="mainToolbar">
@@ -437,6 +437,19 @@
                 <button id="closeGearModal" class="close-btn">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="form-group">
+                    <label>Gear Type</label>
+                    <select id="gearType"
+                        style="width: 100%; padding: 8px; margin-bottom: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
+                        <option value="custom">Custom</option>
+                        <option value="mult">Mult / Splitter</option>
+                        <option value="attenuator">Attenuator</option>
+                        <option value="vca">VCA</option>
+                        <option value="midi">MIDI Interface</option>
+                        <option value="mixer">Mixer (3ch)</option>
+                        <option value="noise">Noise Source</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Module Name</label>
                     <input type="text" id="gearName">
