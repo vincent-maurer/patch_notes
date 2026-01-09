@@ -444,7 +444,12 @@ let activeComputerCard = null;
 let audioCtx = null;
 let audioNodes = {};
 let midiAccess = null;
+let midiClockCount = 0;
+let midiLearnMode = false;
+let pendingLearnTarget = null;
+let midiCcMap = {}; // { "channel_cc": "uicontrol_id" }
 let selectedMidiInput = null;
+let midiHeldNotes = new Set();
 
 let scopeAnalyser1 = null, scopeAnalyser2 = null;
 let scopeFreq1 = null, scopeFreq2 = null;

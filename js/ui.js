@@ -232,8 +232,14 @@ function createComponent(id, config) {
     if (config.type.includes('jack')) {
         el.classList.add('jack');
         el.addEventListener('click', handleJackClick);
-        el.addEventListener('mousedown', handleJackMouseDown);
-        el.addEventListener('touchstart', handleJackMouseDown, { passive: false });
+        el.addEventListener('mousedown', (e) => {
+            if (typeof midiLearnMode !== 'undefined' && midiLearnMode) return; // Ignore clicks in learn mode (or maybe handle learn for jacks? No, usually knobs only)
+            handleJackMouseDown(e);
+        });
+        el.addEventListener('touchstart', (e) => {
+            if (typeof midiLearnMode !== 'undefined' && midiLearnMode) return;
+            handleJackMouseDown(e);
+        }, { passive: false });
 
         el.addEventListener('dblclick', (e) => {
             e.preventDefault(); e.stopPropagation();
@@ -1209,6 +1215,27 @@ function resetKnob(el) {
     saveState();
 }
 function startKnobDrag(e) {
+    // --- MIDI LEARN INTERCEPT ---
+    console.log("startKnobDrag: Learn Mode?", (typeof midiLearnMode !== 'undefined' ? midiLearnMode : 'undefined'));
+    if (typeof midiLearnMode !== 'undefined' && midiLearnMode) {
+        e.preventDefault(); e.stopPropagation();
+
+        let target = e.target;
+        while (target && !target.id && !target.classList.contains('component')) {
+            target = target.parentElement;
+        }
+        if (!target || !target.id) return;
+
+        // Visual Feedback
+        document.querySelectorAll('.learn-active').forEach(el => el.classList.remove('learn-active'));
+
+        pendingLearnTarget = target.id;
+        target.classList.add('learn-active');
+
+        showMessage(`Listening for MIDI to map to: ${target.id}...`, "info");
+        return;
+    }
+    // -----------------------------
     if (e.target.tagName === 'INPUT') return;
 
     // PREVENT viewport pan/zoom from seeing this touch
@@ -1510,6 +1537,23 @@ function stopChassisDrag() {
 }
 
 function startSwitchDrag(e) {
+    // --- MIDI LEARN INTERCEPT ---
+    if (typeof midiLearnMode !== 'undefined' && midiLearnMode) {
+        e.preventDefault(); e.stopPropagation();
+        // Similar to Knob logic, define target
+        let target = e.currentTarget;
+        if (!target || !target.id) return;
+
+        // Visual Feedback
+        document.querySelectorAll('.learn-active').forEach(el => el.classList.remove('learn-active'));
+
+        pendingLearnTarget = target.id;
+        target.classList.add('learn-active');
+
+        showMessage(`Listening for MIDI to map to: ${target.id}...`, "info");
+        return;
+    }
+    // -----------------------------
     e.preventDefault();
     e.stopPropagation();
     isDraggingSwitch = true;
@@ -4506,14 +4550,25 @@ function toggleMIDI() {
         btn?.classList.remove('midi-is-active');
         btn?.classList.remove('btn-active');
         vk?.classList.remove('is-visible');
+        vk?.classList.remove('is-visible');
         showMessage("MIDI Input Disabled", "warning");
+
+        // Hide Learn Button & Disable Mode
+        const learnBtn = document.getElementById('midiLearnBtn');
+        if (learnBtn) learnBtn.classList.remove('visible');
+        if (typeof disableMidiLearnMode === 'function') disableMidiLearnMode();
     } else {
         midiEnabled = true;
         btn?.classList.add('midi-is-active');
         btn?.classList.add('btn-active');
         vk?.classList.add('is-visible');
         if (window.initMidi) window.initMidi();
+        if (window.initMidi) window.initMidi();
         showMessage("MIDI Enabled (Virtual + External)", "success");
+
+        // Show Learn Button
+        const learnBtn = document.getElementById('midiLearnBtn');
+        if (learnBtn) learnBtn.classList.add('visible');
     }
     updateAudioGraph();
 }
@@ -4538,6 +4593,8 @@ function focusView() {
     const centerX = wrapperRect.width / 2;
     const centerY = wrapperRect.height / 2;
 
+    // --- 5. MIDI HELPERS (Added) ---
+
     // Center of Synth (unscaled)
     const synthCenterX = (1200 * VIEWPORT.scale) / 2;
     const synthCenterY = (800 * VIEWPORT.scale) / 2;
@@ -4547,3 +4604,23 @@ function focusView() {
 
     updateTransform();
 }
+
+window.updateKnobFromMidi = function (id, normValue) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // Knob Logic
+    if (el.dataset.type && el.dataset.type.startsWith('knob')) {
+        // Map 0-1 to -150 to +150 (300 range)
+        const angle = (normValue * 300) - 150;
+
+        if (!componentStates[id]) componentStates[id] = { type: el.dataset.type, value: 0 };
+        componentStates[id].value = angle;
+
+        // Update Visuals
+        el.style.setProperty('--angle', angle);
+
+        // Update Audio Params
+        if (typeof updateAudioParams === 'function') updateAudioParams();
+    }
+};

@@ -303,6 +303,16 @@ textarea,
     border-color: #b91c1c !important;
 }
 
+/* MIDI Learn */
+.midi-learn-active {
+    cursor: crosshair !important;
+}
+
+.learn-active {
+    outline: 2px solid #ef4444;
+    box-shadow: 0 0 10px #ef4444;
+}
+
 /* ==========================================================================
    4. TOOLBAR & UI ELEMENTS
    ========================================================================== */
@@ -2151,9 +2161,11 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 
 .vk-key-white:active,
 .vk-key-white.active {
-    background: #ddd;
+    background: #fbbf24;
+    /* Amber */
     transform: translateY(2px);
     box-shadow: none;
+    border-color: #d97706;
 }
 
 .vk-key-black {
@@ -2167,6 +2179,15 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     z-index: 10;
     cursor: pointer;
     box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
+}
+
+.vk-key-black:active,
+.vk-key-black.active {
+    background: #fbbf24;
+    /* Amber */
+    border-color: #d97706;
+    transform: translateY(2px);
+    box-shadow: none;
 }
 
 .vk-b-cs {

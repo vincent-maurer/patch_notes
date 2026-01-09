@@ -702,21 +702,145 @@ function onMIDIMessage(message) {
 }
 
 
+
 function handleMidiMessage(message, isInternal = false) {
     if (!isInternal && !midiEnabled) return;
+
+    // Safety check for critical nodes
     if (!audioNodes['Midi_Pitch']) return;
 
-    const [command, note, velocity] = message.data;
+    const [status, data1, data2] = message.data;
+    const command = status & 0xF0;
+    const channel = status & 0x0F;
 
-    if (command === 144 && velocity > 0) { // Note On
+    // --- 1. MIDI CLOCK (Realtime) ---
+    if (status === 0xF8) { // Timing Clock (24 ppqn)
+        midiClockCount++;
+        // Divide by 6 for 16th notes (24 / 4 = 6)
+        if (midiClockCount % 6 === 0) {
+            triggerMidiClockPulse();
+        }
+        return;
+    }
+    if (status === 0xFA || status === 0xFB) { // Start / Continue
+        midiClockCount = 0;
+        midiHeldNotes.clear(); // Reset held notes
+        return;
+    }
+    if (status === 0xFC) { // Stop
+        midiClockCount = 0;
+        midiHeldNotes.clear(); // Reset held notes
+        safeParam(audioNodes['Midi_Gate'].offset, 0.0, audioCtx.currentTime); // Ensure gate off
+        return;
+    }
+
+    // --- 2. NOTE ON / OFF ---
+    // --- 2. NOTE ON / OFF ---
+    // --- 2. NOTE ON / OFF ---
+    if (command === 144 && data2 > 0) { // Note On
+        const note = data1;
+        const velocity = data2;
         const cv = (note - 60) / 60.0;
+
+        midiHeldNotes.add(note);
+
         safeParam(audioNodes['Midi_Pitch'].offset, cv, audioCtx.currentTime);
         safeParam(audioNodes['Midi_Gate'].offset, 1.0, audioCtx.currentTime);
+
+        // Velocity (0-1)
+        const velNorm = velocity / 127.0;
+        safeParam(audioNodes['Midi_Velocity'].offset, velNorm, audioCtx.currentTime);
+
+        // Virtual Keyboard Feedback
+        const key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+        if (key) key.classList.add('active');
     }
 
-    if (command === 128 || (command === 144 && velocity === 0)) { // Note Off
-        safeParam(audioNodes['Midi_Gate'].offset, 0.0, audioCtx.currentTime);
+    else if (command === 128 || (command === 144 && data2 === 0)) { // Note Off
+        const note = data1;
+        midiHeldNotes.delete(note);
+
+        // Only turn off gate if NO notes are held (Legato)
+        if (midiHeldNotes.size === 0) {
+            safeParam(audioNodes['Midi_Gate'].offset, 0.0, audioCtx.currentTime);
+        }
+
+        // Virtual Keyboard Feedback
+        const key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+        if (key) key.classList.remove('active');
     }
+
+    // --- 3. CONTROL CHANGE (CC) & LEARN ---
+    else if (command === 176) {
+        const cc = data1;
+        const val = data2;
+        console.log(`MIDI CC: Ch${channel} Num${cc} Val${val}. LearnMode: ${midiLearnMode}, Target: ${pendingLearnTarget}`);
+        const mapKey = `${channel}_${cc}`;
+
+        // A. Handle LEARN Mode
+        if (midiLearnMode && pendingLearnTarget) {
+            midiCcMap[mapKey] = pendingLearnTarget;
+
+            showMessage(`Mapped CC ${cc} (Ch ${channel + 1}) to ${pendingLearnTarget}`, "success");
+
+            // Visual feedback cleanup would go here or be handled by UI
+            const el = document.getElementById(pendingLearnTarget);
+            if (el) el.classList.remove('learn-active');
+
+            pendingLearnTarget = null;
+            disableMidiLearnMode(); // Auto-exit learn mode after one mapping? Or keep open? 
+            // Let's keep it simple: Auto-exit for now to prevent accidental overwrites
+            return;
+        }
+
+        // B. Handle MAPPED Controls
+        if (midiCcMap[mapKey]) {
+            const targetId = midiCcMap[mapKey];
+            const normVal = val / 127.0;
+            // Dispatch to UI handler
+            if (typeof updateKnobFromMidi === 'function') {
+                updateKnobFromMidi(targetId, normVal);
+            }
+        }
+    }
+}
+
+function triggerMidiClockPulse() {
+    if (!audioNodes['Midi_Clock']) return;
+    // Simple 5ms trigger pulse
+    const now = audioCtx.currentTime;
+    const p = audioNodes['Midi_Clock'].offset;
+    p.cancelScheduledValues(now);
+    p.setValueAtTime(1.0, now);
+    p.setValueAtTime(0.0, now + 0.005);
+}
+
+function enableMidiLearnMode() {
+    midiLearnMode = true;
+    document.body.classList.add('midi-learn-active'); // For cursor changes
+
+    const btn = document.getElementById('midiLearnBtn');
+    if (btn) btn.classList.add('btn-active');
+
+    showMessage("MIDI LEARN: Click a knob/switch to select it.", "info");
+}
+
+function disableMidiLearnMode() {
+    midiLearnMode = false;
+    pendingLearnTarget = null;
+    document.body.classList.remove('midi-learn-active');
+
+    // Clear any active highlights
+    document.querySelectorAll('.learn-active').forEach(el => el.classList.remove('learn-active'));
+
+    // Update button state if it exists
+    const btn = document.getElementById('midiLearnBtn');
+    if (btn) btn.classList.remove('btn-active');
+}
+
+function toggleMidiLearn() {
+    if (midiLearnMode) disableMidiLearnMode();
+    else enableMidiLearnMode();
 }
 
 function initVirtualKeyboard() {
@@ -1112,8 +1236,8 @@ function createCustomModuleNode(module) {
             outputs: [
                 audioNodes['Midi_Pitch'] || null, // Pitch Node (ConstantSource)
                 audioNodes['Midi_Gate'] || null,   // Gate Node (ConstantSource)
-                null, // Velocity
-                null  // Clock
+                audioNodes['Midi_Velocity'] || null, // Velocity
+                audioNodes['Midi_Clock'] || null  // Clock
             ]
         };
     } // Close midi block
@@ -1289,6 +1413,15 @@ function finishBuild() {
             audioNodes['Midi_Gate'] = audioCtx.createConstantSource();
             audioNodes['Midi_Gate'].offset.value = 0.0; // <--- Set Default to Gate Off
             audioNodes['Midi_Gate'].start();
+
+            audioNodes['Midi_Velocity'] = audioCtx.createConstantSource();
+            audioNodes['Midi_Velocity'].offset.value = 0.0;
+            audioNodes['Midi_Velocity'].start();
+
+            // Clock Trigger (Short pulses)
+            audioNodes['Midi_Clock'] = audioCtx.createConstantSource();
+            audioNodes['Midi_Clock'].offset.value = 0.0;
+            audioNodes['Midi_Clock'].start();
         }
         if (!audioNodes['Global_Noise']) {
             const bSize = audioCtx.sampleRate * 2;

@@ -18,6 +18,8 @@ class CardMIDI extends ComputerCard {
         if (audioNodes) {
             if (audioNodes['Midi_Pitch']) audioNodes['Midi_Pitch'].connect(this.io.cv1Out);
             if (audioNodes['Midi_Gate']) audioNodes['Midi_Gate'].connect(this.io.pulse1Out);
+            if (audioNodes['Midi_Velocity']) audioNodes['Midi_Velocity'].connect(this.io.cv2Out);
+            if (audioNodes['Midi_Clock']) audioNodes['Midi_Clock'].connect(this.io.pulse2Out);
         }
 
         // Connect visualizer
@@ -33,11 +35,13 @@ class CardMIDI extends ComputerCard {
             try {
                 if (audioNodes['Midi_Pitch']) audioNodes['Midi_Pitch'].disconnect(this.io.cv1Out);
                 if (audioNodes['Midi_Gate']) audioNodes['Midi_Gate'].disconnect(this.io.pulse1Out);
-            } catch(e) {}
+                if (audioNodes['Midi_Velocity']) audioNodes['Midi_Velocity'].disconnect(this.io.cv2Out);
+                if (audioNodes['Midi_Clock']) audioNodes['Midi_Clock'].disconnect(this.io.pulse2Out);
+            } catch (e) { }
         }
-        
-        try { this.io.pulse1Out.disconnect(this.gateAnalyser); } catch(e) {}
-        
+
+        try { this.io.pulse1Out.disconnect(this.gateAnalyser); } catch (e) { }
+
         // Reset LED
         const jack = document.getElementById('jack-pulse1out');
         if (jack) jack.style.backgroundColor = '';
@@ -51,7 +55,7 @@ class CardMIDI extends ComputerCard {
         this.gateAnalyser.getFloatTimeDomainData(this.gateData);
         const isHigh = this.gateData[0] > 0.5;
         const jack = document.getElementById('jack-pulse1out');
-        
+
         if (jack) {
             jack.style.backgroundColor = isHigh ? '#ffff00' : '';
         }

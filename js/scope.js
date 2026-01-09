@@ -77,7 +77,7 @@ function updateScopeConnection() {
     // Define map of Jack ID -> Audio Node
     globalJackMap = {
         // Computer IO
-        'jack-audio1out': audioNodes['Computer_IO']?.outputL,
+        'jack-audio1out': (audioNodes['Computer_IO'] && audioNodes['Computer_IO'].outputL) ? audioNodes['Computer_IO'].outputL : null,
         'jack-audio2out': audioNodes['Computer_IO']?.outputR,
         'jack-cv1out': audioNodes['Computer_IO']?.cv1Out,
         'jack-cv2out': audioNodes['Computer_IO']?.cv2Out,
@@ -85,10 +85,10 @@ function updateScopeConnection() {
         'jack-pulse2out': audioNodes['Computer_IO']?.pulse2Out,
 
         // Oscillators
-        'jack-osc1sqrOut': audioNodes['VCO1'].output,
-        'jack-osc1sinOut': audioNodes['VCO1_Sin'].output,
-        'jack-osc2sqrOut': audioNodes['VCO2'].output,
-        'jack-osc2sinOut': audioNodes['VCO2_Sin'].output,
+        'jack-osc1sqrOut': audioNodes['VCO1']?.output,
+        'jack-osc1sinOut': audioNodes['VCO1_Sin']?.output,
+        'jack-osc2sqrOut': audioNodes['VCO2']?.output,
+        'jack-osc2sinOut': audioNodes['VCO2_Sin']?.output,
 
         // Processors
         'jack-slopes1out': audioNodes['Slopes1']?.output,
