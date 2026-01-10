@@ -2199,7 +2199,22 @@ function setupExportHandlers() {
             let baseUrl = window.location.href.split('#')[0];
             try { if (window.self !== window.top) baseUrl = window.top.location.href.split('#')[0]; } catch (e) { }
             const u = `${baseUrl}#p=${compressed}`;
-            navigator.clipboard.writeText(u).then(() => showMessage("URL Copied!", "success"));
+            navigator.clipboard.writeText(u).then(() => {
+                showMessage("URL Copied!", "success");
+
+                // Visual Button Feedback
+                const originalHtml = shareBtn.innerHTML;
+                const originalWidth = shareBtn.style.width;
+
+                shareBtn.innerHTML = '<span style="font-size: 0.75rem; font-weight: bold;">Copied!</span>';
+                shareBtn.style.color = 'var(--text-main)'; // Ensure visibility against yellow active state if stuck
+
+                setTimeout(() => {
+                    shareBtn.innerHTML = originalHtml;
+                    shareBtn.style.width = originalWidth;
+                    shareBtn.style.color = '';
+                }, 1500);
+            });
         });
     }
 
@@ -2446,7 +2461,7 @@ function savePatchAsPng() {
         k.style.backgroundPosition = 'center';
         k.style.backgroundSize = 'contain';
 
-        if (k.classList.contains('component')) k.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+        if (k.classList.contains('component') && !k.classList.contains('custom-knob-bg')) k.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
         else k.style.transform = `rotate(${angle}deg)`;
     });
 

@@ -1616,8 +1616,20 @@ function finishBuild() {
             const def = AVAILABLE_CARDS.find(c => c.name === labelEl.textContent);
             if (def) targetCardId = def.id;
         }
+
+        // Preserve State during Audio Context transition
+        let preservedState = null;
+        if (activeComputerCard && typeof activeComputerCard.getState === 'function') {
+            preservedState = activeComputerCard.getState();
+        }
+
         activeComputerCard = null;
         swapComputerCard(targetCardId);
+
+        // Restore State
+        if (activeComputerCard && preservedState && typeof activeComputerCard.setState === 'function') {
+            activeComputerCard.setState(preservedState);
+        }
 
         // --- Standard Synth Modules ---
         audioNodes['VCO1'] = createVCO('VCO1');

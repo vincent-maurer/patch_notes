@@ -367,6 +367,13 @@ textarea,
     border-color: var(--text-muted);
 }
 
+.toolbar-btn:active {
+    background-color: var(--text-main) !important;
+    color: var(--page-bg) !important;
+    border-color: var(--text-main) !important;
+    transform: translateY(1px);
+}
+
 .toolbar-btn svg {
     flex-shrink: 0;
     width: 20px;

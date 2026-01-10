@@ -1,4 +1,4 @@
-const CACHE_NAME = 'patchnotes-v271';
+const CACHE_NAME = 'patchnotes-v273';
 const ASSETS_TO_CACHE = [
     'patchnotes.html',
     'style.css',
