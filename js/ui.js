@@ -2130,6 +2130,65 @@ function setupExportHandlers() {
     const menu = document.getElementById('exportMenu');
     document.getElementById('exportMenuToggle').addEventListener('click', showExportMenu);
 
+    // System Menu
+    const sysBtn = document.getElementById('systemMenuToggle');
+    if (sysBtn) {
+        sysBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('systemMenu');
+            const expMenu = document.getElementById('exportMenu');
+
+            if (menu) {
+                // Close others
+                if (expMenu) expMenu.classList.remove('visible');
+
+                const isVisible = menu.classList.contains('visible');
+                if (isVisible) {
+                    menu.classList.remove('visible');
+                } else {
+                    // POSITIONING LOGIC
+                    const wrapper = document.getElementById('mainContentWrapper');
+                    if (wrapper.style.position !== 'relative') wrapper.style.position = 'relative';
+
+                    const currentScale = (typeof VIEWPORT !== 'undefined' && VIEWPORT.scale) ? VIEWPORT.scale : 1.0;
+
+                    // Temp show to measure
+                    // Note: We use .visible class which rules display:flex. 
+                    // But we want to measure before showing? .visible sets display:flex.
+                    // visibility:hidden trick from showExportMenu is safer.
+                    menu.classList.add('visible'); // make it flex so we can measure
+                    menu.style.visibility = 'hidden';
+
+                    const realMenuWidth = menu.offsetWidth;
+                    const wrapperRect = wrapper.getBoundingClientRect();
+                    const btnRect = sysBtn.getBoundingClientRect();
+
+
+
+                    const offsetTop = (btnRect.bottom - wrapperRect.top) / currentScale;
+                    // Align right edge of menu with right edge of button
+                    const offsetLeft = (btnRect.right - wrapperRect.left) / currentScale - realMenuWidth;
+
+                    // Allow simple left-alignment if preferred, but right-align is standard for end-toolbar items.
+                    // If you want left-align: (btnRect.left - wrapperRect.left) / currentScale;
+
+                    menu.style.top = (offsetTop + 5) + 'px';
+                    menu.style.left = offsetLeft + 'px';
+                    menu.style.visibility = 'visible';
+                }
+            }
+        });
+    }
+
+    // Close menus on outside click
+    document.addEventListener('click', (e) => {
+        const sysMenu = document.getElementById('systemMenu');
+        const sysBtn = document.getElementById('systemMenuToggle');
+        if (sysMenu && sysMenu.classList.contains('visible') && !sysMenu.contains(e.target) && e.target !== sysBtn && !sysBtn.contains(e.target)) {
+            sysMenu.classList.remove('visible');
+        }
+    });
+
     // NEW Share Button Handler
     const shareBtn = document.getElementById('shareUrlBtn');
     if (shareBtn) {
@@ -3644,6 +3703,9 @@ function initExternalGearUI() {
                 case 'scope': // Scope
                     set('Oscilloscope', 2, 0, 0);
                     break;
+                case 'sequencer':
+                    set('Step Sequencer', 1, 3, 10);
+                    break;
                 default: // Custom
                     if (customConfig) customConfig.style.display = 'block';
                     if (inputs) inputs.disabled = false;
@@ -3703,6 +3765,14 @@ function initExternalGearUI() {
             jackLabels[`_out_0`] = "White";
             jackLabels[`_out_1`] = "Pink";
             knobLabels[`_knob_0`] = "Level";
+        } else if (type === 'sequencer') {
+            jackLabels[`_in_0`] = "Clock";
+            jackLabels[`_out_0`] = "CV";
+            jackLabels[`_out_1`] = "Gate";
+            jackLabels[`_out_2`] = "Q.CV";
+            for (let i = 0; i < 8; i++) knobLabels[`_knob_${i}`] = `${i + 1}`;
+            knobLabels[`_knob_8`] = "Rate";
+            knobLabels[`_knob_9`] = "Scale";
         }
 
         // We pass a "labels" object wrapper or pre-generate IDs? 
@@ -4129,65 +4199,42 @@ function renderCustomModuleToDOM(moduleDef) {
     }
 
 
-    // Controls Container (Knobs) - Use Grid for alignment
-    if (knobs > 0) {
-        const knobContainer = document.createElement('div');
-        knobContainer.style.display = 'flex';
-        knobContainer.style.flexWrap = 'wrap';
-        knobContainer.style.justifyContent = 'center'; // Center knobs
-        knobContainer.style.gap = '15px'; // Consistent gap with jacks
-        knobContainer.style.alignItems = 'flex-start'; // Align top
-        knobContainer.style.marginBottom = '2px';
-        knobContainer.style.padding = '10px';
-        knobContainer.style.borderRadius = '6px';
+    // Unified Logic for Small Modules ( <= 4 Components )
+    const totalComponents = knobs + inputs + outputs;
 
+    if (totalComponents <= 4) {
+        // ONE ROW LAYOUT
+        const unifiedContainer = document.createElement('div');
+        unifiedContainer.style.display = 'grid';
+        unifiedContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        unifiedContainer.style.gap = '6px';
+        unifiedContainer.style.justifyItems = 'center';
+        unifiedContainer.style.alignItems = 'start'; // Important for knobs
+        unifiedContainer.style.padding = '4px';
+        unifiedContainer.style.borderRadius = '6px';
+
+        // 1. Knobs
         for (let i = 0; i < knobs; i++) {
             const knobId = `${id}_knob_${i}`;
-
-            // Priority: Existing Config > Preset Label > Default
             let currentLabel = `P${i + 1}`;
-
-            // Check Preset Labels passed during creation (suffix match)
             if (config.presetLabels && config.presetLabels.knobs) {
                 const suffix = `_knob_${i}`;
                 if (config.presetLabels.knobs[suffix]) currentLabel = config.presetLabels.knobs[suffix];
             }
-
-            // Check Persisted Labels (specific ID match)
             if (config.knobLabels && config.knobLabels[knobId]) {
                 currentLabel = config.knobLabels[knobId];
             }
-
             if (!SYSTEM_CONFIG[knobId]) {
                 SYSTEM_CONFIG[knobId] = { type: 'knob-small', x: '0', y: '0', label: currentLabel, isCustom: true, defValue: 0 };
             }
             if (!componentStates[knobId]) {
                 componentStates[knobId] = { type: 'knob-small', value: 0, isTouched: false };
             }
-
             const knobWrapper = createCustomKnob(knobId, currentLabel, moduleDef);
-            knobContainer.appendChild(knobWrapper);
-        }
-        modEl.appendChild(knobContainer);
-    }
-
-    // Jacks Container - Improved Layout with Grid
-
-    // Jacks Container - Single Row (Flex)
-    if (inputs > 0 || outputs > 0) {
-        const jackContainer = document.createElement('div');
-        jackContainer.style.display = 'flex';
-        jackContainer.style.flexWrap = 'wrap';
-        jackContainer.style.gap = '15px';
-        jackContainer.style.justifyContent = 'center';
-        jackContainer.style.alignItems = 'center';
-
-        if (knobs > 0) {
-            jackContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
-            jackContainer.style.paddingTop = '10px';
+            unifiedContainer.appendChild(knobWrapper);
         }
 
-        // INPUTS
+        // 2. Inputs
         for (let i = 0; i < inputs; i++) {
             const jackId = `${id}_in_${i}`;
             let currentLabel = `In ${i + 1}`;
@@ -4196,13 +4243,12 @@ function renderCustomModuleToDOM(moduleDef) {
                 if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
             }
             if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
-
             SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
-            const jack = createCustomJack(jackId, currentLabel, moduleDef);
-            jackContainer.appendChild(jack);
+            const jack = createCustomJack(jackId, currentLabel, moduleDef, 'in');
+            unifiedContainer.appendChild(jack);
         }
 
-        // OUTPUTS
+        // 3. Outputs
         for (let i = 0; i < outputs; i++) {
             const jackId = `${id}_out_${i}`;
             let currentLabel = `Out ${i + 1}`;
@@ -4211,13 +4257,106 @@ function renderCustomModuleToDOM(moduleDef) {
                 if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
             }
             if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
-
             SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
-            const jack = createCustomJack(jackId, currentLabel, moduleDef);
-            jackContainer.appendChild(jack);
+            const jack = createCustomJack(jackId, currentLabel, moduleDef, 'out');
+            unifiedContainer.appendChild(jack);
         }
 
-        modEl.appendChild(jackContainer);
+        modEl.appendChild(unifiedContainer);
+
+    } else {
+        // ORIGINAL SEPARATE ROW LAYOUT (For > 4 Components)
+
+        // Controls Container (Knobs) - Use Grid for alignment
+        if (knobs > 0) {
+            const knobContainer = document.createElement('div');
+            knobContainer.style.display = 'grid';
+            knobContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+            knobContainer.style.gap = '6px'; // Consistent gap with jacks
+            knobContainer.style.justifyItems = 'center'; // Center items in grid cells
+            knobContainer.style.alignItems = 'start'; // Align top
+            knobContainer.style.marginBottom = '2px';
+            knobContainer.style.padding = '4px';
+            knobContainer.style.borderRadius = '6px';
+
+            for (let i = 0; i < knobs; i++) {
+                const knobId = `${id}_knob_${i}`;
+
+                // Priority: Existing Config > Preset Label > Default
+                let currentLabel = `P${i + 1}`;
+
+                // Check Preset Labels passed during creation (suffix match)
+                if (config.presetLabels && config.presetLabels.knobs) {
+                    const suffix = `_knob_${i}`;
+                    if (config.presetLabels.knobs[suffix]) currentLabel = config.presetLabels.knobs[suffix];
+                }
+
+                // Check Persisted Labels (specific ID match)
+                if (config.knobLabels && config.knobLabels[knobId]) {
+                    currentLabel = config.knobLabels[knobId];
+                }
+
+                if (!SYSTEM_CONFIG[knobId]) {
+                    SYSTEM_CONFIG[knobId] = { type: 'knob-small', x: '0', y: '0', label: currentLabel, isCustom: true, defValue: 0 };
+                }
+                if (!componentStates[knobId]) {
+                    componentStates[knobId] = { type: 'knob-small', value: 0, isTouched: false };
+                }
+
+                const knobWrapper = createCustomKnob(knobId, currentLabel, moduleDef);
+                knobContainer.appendChild(knobWrapper);
+            }
+            modEl.appendChild(knobContainer);
+        }
+
+        // Jacks Container - Improved Layout with Grid
+
+        // Jacks Container - Single Row (Flex)
+        if (inputs > 0 || outputs > 0) {
+            const jackContainer = document.createElement('div');
+            jackContainer.style.display = 'grid';
+            jackContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+            jackContainer.style.gap = '6px';
+            jackContainer.style.justifyItems = 'center';
+            jackContainer.style.alignItems = 'center';
+
+            if (knobs > 0) {
+                jackContainer.style.borderTop = '1px solid rgba(127,127,127,0.2)';
+                jackContainer.style.paddingTop = '10px';
+            }
+
+            // INPUTS
+            for (let i = 0; i < inputs; i++) {
+                const jackId = `${id}_in_${i}`;
+                let currentLabel = `In ${i + 1}`;
+                if (config.presetLabels && config.presetLabels.jacks) {
+                    const suffix = `_in_${i}`;
+                    if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
+                }
+                if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
+
+                SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
+                const jack = createCustomJack(jackId, currentLabel, moduleDef, 'in');
+                jackContainer.appendChild(jack);
+            }
+
+            // OUTPUTS
+            for (let i = 0; i < outputs; i++) {
+                const jackId = `${id}_out_${i}`;
+                let currentLabel = `Out ${i + 1}`;
+                if (config.presetLabels && config.presetLabels.jacks) {
+                    const suffix = `_out_${i}`;
+                    if (config.presetLabels.jacks[suffix]) currentLabel = config.presetLabels.jacks[suffix];
+                }
+                if (config.jackLabels && config.jackLabels[jackId]) currentLabel = config.jackLabels[jackId];
+
+                SYSTEM_CONFIG[jackId] = { type: 'jack', x: '0', y: '0', label: currentLabel, isCustom: true };
+                const jack = createCustomJack(jackId, currentLabel, moduleDef, 'out');
+                jackContainer.appendChild(jack);
+            }
+
+            modEl.appendChild(jackContainer);
+        }
     }
 
     sidecar.appendChild(modEl);
@@ -4235,20 +4374,22 @@ function removeCustomModule(moduleId) {
 
         // 3. Cleanup SYSTEM_CONFIG & Cables
         // Jacks
-        for (let i = 0; i < (mod.config.inputs || 0); i++) {
-            const jId = `${moduleId}_in_${i}`;
-            delete SYSTEM_CONFIG[jId];
-            removeCablesConnectedTo(jId);
-        }
-        for (let i = 0; i < (mod.config.outputs || 0); i++) {
-            const jId = `${moduleId}_out_${i}`;
-            delete SYSTEM_CONFIG[jId];
-            removeCablesConnectedTo(jId);
-        }
-        // Knobs
-        for (let i = 0; i < (mod.config.knobs || 0); i++) {
-            const kId = `${moduleId}_knob_${i}`;
-            delete SYSTEM_CONFIG[kId];
+        if (mod.config) {
+            for (let i = 0; i < (mod.config.inputs || 0); i++) {
+                const jId = `${moduleId}_in_${i}`;
+                delete SYSTEM_CONFIG[jId];
+                removeCablesConnectedTo(jId);
+            }
+            for (let i = 0; i < (mod.config.outputs || 0); i++) {
+                const jId = `${moduleId}_out_${i}`;
+                delete SYSTEM_CONFIG[jId];
+                removeCablesConnectedTo(jId);
+            }
+            // Knobs
+            for (let i = 0; i < (mod.config.knobs || 0); i++) {
+                const kId = `${moduleId}_knob_${i}`;
+                delete SYSTEM_CONFIG[kId];
+            }
         }
 
         CUSTOM_MODULES.splice(idx, 1);
@@ -4313,13 +4454,8 @@ function createCustomKnob(id, label, moduleDef) {
     knobBg.style.pointerEvents = 'none';
     el.appendChild(knobBg);
 
-    // Set Background Image
-    const isDark = document.body.classList.contains('dark-mode');
-    const imgUrl = isDark ? 'url("images/smallKnob_dark.svg")' : 'url("images/smallKnob.svg")';
-    el.style.backgroundImage = imgUrl;
-    el.style.backgroundSize = 'contain';
-    el.style.backgroundRepeat = 'no-repeat';
-    el.style.backgroundPosition = 'center center';
+    // Set Background Image using CSS Class for Theme Support
+    el.classList.add('custom-knob-bg');
 
     // Rotation logic
     const state = componentStates[id] || { value: 0 };
@@ -4379,7 +4515,7 @@ function createCustomKnob(id, label, moduleDef) {
     return wrapper;
 }
 
-function createCustomJack(id, label, moduleDef) {
+function createCustomJack(id, label, moduleDef, type = 'any') {
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
@@ -4398,6 +4534,13 @@ function createCustomJack(id, label, moduleDef) {
     el.style.width = '28px'; // Reduced from 32px
     el.style.height = '28px'; // Reduced from 32px
     el.style.paddingBottom = '0';
+
+    // Visual Distinction based on Type
+    if (type === 'in') {
+        el.classList.add('custom-jack-in');
+    } else if (type === 'out') {
+        el.classList.add('custom-jack-out');
+    }
 
     // Fix Centering: Remove the translate(-50%, -50%) from .jack/.component classes
     el.style.transform = 'none';
@@ -4550,12 +4693,13 @@ function toggleMIDI() {
         btn?.classList.remove('midi-is-active');
         btn?.classList.remove('btn-active');
         vk?.classList.remove('is-visible');
-        vk?.classList.remove('is-visible');
+        vk?.classList.remove('is-visible'); // remove duplicate if exists or just ensure it's gone
         showMessage("MIDI Input Disabled", "warning");
 
         // Hide Learn Button & Disable Mode
         const learnBtn = document.getElementById('midiLearnBtn');
-        if (learnBtn) learnBtn.classList.remove('visible');
+        if (learnBtn) learnBtn.classList.add('hidden');
+        if (btn) btn.classList.add('btn-group-last'); // Make MIDI toggle round
         if (typeof disableMidiLearnMode === 'function') disableMidiLearnMode();
     } else {
         midiEnabled = true;
@@ -4568,7 +4712,8 @@ function toggleMIDI() {
 
         // Show Learn Button
         const learnBtn = document.getElementById('midiLearnBtn');
-        if (learnBtn) learnBtn.classList.add('visible');
+        if (learnBtn) learnBtn.classList.remove('hidden');
+        if (btn) btn.classList.remove('btn-group-last'); // Restore square edge
     }
     updateAudioGraph();
 }

@@ -20,7 +20,7 @@
             <h1
                 style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">
                 Workshop System Patch Notes</h1>
-            <div style="font-size: 0.7rem; color: var(--text-muted);">v2.4</div>
+            <div id="appVersion" style="font-size: 0.7rem; color: var(--text-muted);">v2.71</div>
         </div>
 
         <div id="mainToolbar">
@@ -69,7 +69,7 @@
                         <line x1="8" y1="23" x2="16" y2="23"></line>
                     </svg>
                 </button>
-                <button id="midiToggle" class="toolbar-btn" title="MIDI / Keyboard">
+                <button id="midiToggle" class="toolbar-btn btn-group-last" title="MIDI / Keyboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <!-- Keys: C, D, E, F (Width ~5 each) -->
                         <rect x="2" y="6" width="20" height="12" rx="1"></rect>
@@ -81,7 +81,7 @@
                         <path d="M10.5 6v7h3V6z" fill="currentColor" stroke="none"></path>
                     </svg>
                 </button>
-                <button id="midiLearnBtn" class="toolbar-btn" title="MIDI Learn" onclick="toggleMidiLearn()">
+                <button id="midiLearnBtn" class="toolbar-btn hidden" title="MIDI Learn" onclick="toggleMidiLearn()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <!-- Radio Button Icon for Learn -->
                         <circle cx="12" cy="12" r="10"></circle>
@@ -192,6 +192,14 @@
             </div>
 
             <div class="toolbar-group">
+                <button id="systemMenuToggle" class="toolbar-btn" title="System / App Options">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </button>
                 <button id="clearButton" class="toolbar-btn btn-danger" title="Clear All / Reset">
                     <svg viewBox="0 0 24 24">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -211,6 +219,15 @@
             <div class="export-option" data-action="savePatchButton">JSON File (Importable)</div>
             <div class="export-option" data-action="saveGearButton">Save External Gear (JSON)</div>
             <div class="export-option" data-action="loadGearButton">Load External Gear (JSON)</div>
+        </div>
+
+        <div id="systemMenu">
+            <div class="export-option header">App System</div>
+            <div id="pwaActionBtn" class="export-option hidden" onclick="handlePwaAction()"
+                style="color: var(--color-active); font-weight: bold;">App Action</div>
+            <div id="pwaUninstallBtn" class="export-option" onclick="handlePwaUninstall()"
+                style="color: var(--color-error);">Uninstall App / Reset</div>
+            <div class="export-option" onclick="window.location.reload()">Reload Page</div>
         </div>
 
         <input type="file" id="loadGearInput" accept=".json" style="display: none;" />
@@ -455,6 +472,7 @@
                         <option value="midi">MIDI Interface</option>
                         <option value="mixer">Mixer (3ch)</option>
                         <option value="noise">Noise Source</option>
+                        <option value="sequencer">Step Sequencer</option>
                         <option value="scope">Oscilloscope</option>
                     </select>
                 </div>
@@ -511,16 +529,11 @@
     <script src="js/audio-engine.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/pwa.js"></script>
     <script>
+        // Removed inline SW registration in favor of pwa.js
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    }, err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
+            // Redundant check, handled in pwa.js but kept for safety if needed
         }
     </script>
 </body>

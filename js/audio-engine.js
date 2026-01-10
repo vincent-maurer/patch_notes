@@ -350,6 +350,147 @@ registerProcessor('recorder-processor', RecorderProcessor);
 
 
 
+// --- STEP SEQUENCER WORKLET ---
+const sequencerWorkletCode = `
+class StepSequencerProcessor extends AudioWorkletProcessor {
+    static get parameterDescriptors() {
+        const params = [];
+        for (let i = 0; i < 8; i++) {
+            params.push({ name: 'step' + i, defaultValue: 0, minValue: 0, maxValue: 1 });
+        }
+        params.push({ name: 'rate', defaultValue: 0, minValue: 0, maxValue: 50 });
+        params.push({ name: 'quantize', defaultValue: 0, minValue: 0, maxValue: 5 });
+        params.push({ name: 'useExternal', defaultValue: 0, minValue: 0, maxValue: 1 });
+        return params;
+    }
+
+    constructor() {
+        super();
+        this.currentStep = 0;
+        this.lastClock = 0;
+        this.gateTimer = 0;
+        this.phase = 0;
+        this.triggerSamples = 480; // 10ms at 48k
+        
+        // Scales (Intervals from Root)
+        this.scales = [
+            null, // 0: Raw
+            [0,1,2,3,4,5,6,7,8,9,10,11], // 1: Chromatic
+            [0,2,4,5,7,9,11], // 2: Major
+            [0,2,3,5,7,8,10], // 3: Minor
+            [0,2,4,7,9], // 4: Major Pentatonic
+            [0,3,5,7,10] // 5: Minor Pentatonic
+        ];
+    }
+
+    getQuantized(value, mode) {
+        if (mode < 0.5) return value; // Off
+
+        // Assume 0.0 - 1.0 covers 5 Octaves (60 semitones)
+        // 1.0 value = 5V? Let's standardise on 1.0 = 5 Octaves for now
+        const TOTAL_SEMITONES = 60;
+        
+        // Round to nearest EXACT semitone first to avoid float precision jitter
+        let semitoneGlobal = Math.round(value * TOTAL_SEMITONES);
+        
+        let octave = Math.floor(semitoneGlobal / 12);
+        let semitoneInOct = semitoneGlobal % 12;
+        if (semitoneInOct < 0) semitoneInOct += 12; // Handle negative modulation safely
+        
+        let scaleIdx = Math.round(mode);
+        if (scaleIdx < 1) scaleIdx = 1;
+        if (scaleIdx >= this.scales.length) scaleIdx = this.scales.length - 1;
+        
+        const scale = this.scales[scaleIdx];
+        
+        // Snap to nearest in scale
+        let best = scale[0];
+        let minDist = 100;
+        
+        for (let note of scale) {
+            let dist = Math.abs(note - semitoneInOct);
+            if (dist < minDist) {
+                minDist = dist;
+                best = note;
+            }
+        }
+        
+        let finalSemitone = (octave * 12) + best;
+        return finalSemitone / TOTAL_SEMITONES;
+    }
+
+    process(inputs, outputs, parameters) {
+        const clockIn = inputs[0][0];
+        const cvOut = outputs[0][0];
+        const gateOut = outputs[1][0];
+        const quantOut = outputs[2] ? outputs[2][0] : null;
+
+        const rateParam = parameters.rate;
+        const useExtParam = parameters.useExternal;
+        const quantParam = parameters.quantize;
+        
+        const blockSize = cvOut ? cvOut.length : 128;
+        const sampleRate = 48000;
+
+        for (let i = 0; i < blockSize; i++) {
+            let trigger = false;
+            
+            // 1. Clock Logic
+            const useExternal = (useExtParam.length > 1 ? useExtParam[i] : useExtParam[0]) > 0.5;
+            
+            if (useExternal) {
+                // External Clock
+                let clk = (clockIn && clockIn.length > i) ? clockIn[i] : 0;
+                
+                // Lower threshold to 0.1 for square waves / unipolar / weak signals
+                if (clk > 0.1 && this.lastClock <= 0.1) {
+                    trigger = true;
+                }
+                this.lastClock = clk;
+            } else {
+                // Internal Clock
+                const rate = rateParam.length > 1 ? rateParam[i] : rateParam[0];
+                if (rate > 0.1) {
+                    this.phase += rate / sampleRate;
+                    if (this.phase >= 1.0) {
+                        this.phase -= 1.0;
+                        trigger = true;
+                    }
+                }
+            }
+
+            if (trigger) {
+                this.currentStep = (this.currentStep + 1) % 8;
+                this.gateTimer = this.triggerSamples;
+            }
+
+            // 2. Output Handling
+            const stepName = 'step' + this.currentStep;
+            const stepParam = parameters[stepName];
+            const rawVal = (stepParam.length > 1) ? stepParam[i] : (stepParam[0] || 0);
+
+            if (cvOut) cvOut[i] = rawVal;
+            
+            // Quantizer
+            if (quantOut) {
+                const mode = quantParam.length > 1 ? quantParam[i] : quantParam[0];
+                quantOut[i] = this.getQuantized(rawVal, mode);
+            }
+
+            // Gate
+            if (gateOut) {
+                gateOut[i] = (this.gateTimer > 0) ? 1.0 : 0.0;
+            }
+            
+            if (this.gateTimer > 0) this.gateTimer--;
+        }
+
+        return true;
+    }
+}
+registerProcessor('sequencer-processor', StepSequencerProcessor);
+`;
+
 const TWISTS_WORKLET_CODE = `
 class TwistsProcessor extends AudioWorkletProcessor {
     static get parameterDescriptors() {
@@ -1329,6 +1470,38 @@ function createCustomModuleNode(module) {
             outputs: [] // No outputs for scope
         };
     }
+    else if (type === 'sequencer') {
+        const node = new AudioWorkletNode(audioCtx, 'sequencer-processor', {
+            numberOfInputs: 1,
+            numberOfOutputs: 3,
+            outputChannelCount: [1, 1, 1], // Mono CV, Mono Gate, Mono Quantized
+            parameterData: {
+                step0: 0, step1: 0, step2: 0, step3: 0,
+                step4: 0, step5: 0, step6: 0, step7: 0
+            }
+        });
+
+        // Proxy Gains for distinct access
+        const cvGain = audioCtx.createGain();
+        const gateGain = audioCtx.createGain();
+        const quantGain = audioCtx.createGain();
+
+        // Worklet Output 0 -> CV
+        node.connect(cvGain, 0);
+
+        // Worklet Output 1 -> Gate
+        node.connect(gateGain, 1);
+
+        // Worklet Output 2 -> Quantized
+        node.connect(quantGain, 2);
+
+        return {
+            type: 'sequencer',
+            input: node, // Clock In
+            outputs: [cvGain, gateGain, quantGain],
+            processor: node // Explicit ref for parameter access
+        };
+    }
 
     return null;
 }
@@ -1364,12 +1537,17 @@ function buildAudioGraph() {
         const blobHump = new Blob([humpbackWorkletCode], { type: 'application/javascript' });
         const urlHump = URL.createObjectURL(blobHump);
 
+        // 6. Step Sequencer
+        const blobSeq = new Blob([sequencerWorkletCode], { type: 'application/javascript' });
+        const urlSeq = URL.createObjectURL(blobSeq);
+
         Promise.all([
             audioCtx.audioWorklet.addModule(urlSlopes),
             audioCtx.audioWorklet.addModule(urlRec),
             audioCtx.audioWorklet.addModule(urlTwists),
             audioCtx.audioWorklet.addModule(urlVco),
-            audioCtx.audioWorklet.addModule(urlHump)
+            audioCtx.audioWorklet.addModule(urlHump),
+            audioCtx.audioWorklet.addModule(urlSeq)
         ]).then(() => {
             audioNodes['workletLoaded'] = true;
             finishBuild();
@@ -1683,6 +1861,16 @@ function finishBuild() {
                 if (node.inputs) {
                     jackMap[`${mod.id}_in_0`] = node.inputs[0]; // Ch1
                     jackMap[`${mod.id}_in_1`] = node.inputs[1]; // Ch2
+                }
+            }
+            else if (node.type === 'sequencer') {
+                if (node.input) jackMap[`${mod.id}_in_0`] = node.input; // Clock In
+                if (node.outputs && node.outputs.length >= 2) {
+                    jackMap[`${mod.id}_out_0`] = node.outputs[0]; // CV
+                    jackMap[`${mod.id}_out_1`] = node.outputs[1]; // Gate
+                }
+                if (node.outputs && node.outputs.length >= 3) {
+                    jackMap[`${mod.id}_out_2`] = node.outputs[2]; // Quantized CV
                 }
             }
         });
@@ -2260,6 +2448,29 @@ function updateAudioParams() {
                 // Update both output gains
                 safeParam(node.gains[0].gain, lvl, now);
                 safeParam(node.gains[1].gain, lvl, now);
+            }
+            else if (node.type === 'sequencer') {
+                // Knobs 0-7 map to Steps 0-7
+                for (let i = 0; i < 8; i++) {
+                    const val = getKnobValue(`${mod.id}_knob_${i}`, 0, 1);
+                    const paramName = `step${i}`;
+                    const param = node.processor.parameters.get(paramName);
+                    if (param) safeParam(param, val, now);
+                }
+
+                // Knob 8: Rate (0 to 40 Hz)
+                const rateVal = getKnobValue(`${mod.id}_knob_8`, 0, 40);
+                safeParam(node.processor.parameters.get('rate'), rateVal, now);
+
+                // Knob 9: Quantize Mode (0 to 5)
+                const quantVal = getKnobValue(`${mod.id}_knob_9`, 0, 5.1);
+                safeParam(node.processor.parameters.get('quantize'), quantVal, now);
+
+                // Check Patching: If Clock Input (`_in_0`) has ANY cable connected to it
+                const jackId = `${mod.id}_in_0`;
+                const isClockPatched = cableData.some(c => c.end === jackId || c.start === jackId);
+                const useExtVal = isClockPatched ? 1 : 0;
+                safeParam(node.processor.parameters.get('useExternal'), useExtVal, now);
             }
         });
     }

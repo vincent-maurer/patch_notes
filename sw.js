@@ -1,4 +1,4 @@
-const CACHE_NAME = 'patchnotes-v1';
+const CACHE_NAME = 'patchnotes-v271';
 const ASSETS_TO_CACHE = [
     'patchnotes.html',
     'style.css',
@@ -20,6 +20,7 @@ const ASSETS_TO_CACHE = [
     'js/ext/lz-string.min.js',
 
     // Core JS
+    'js/pwa.js',
     'js/audio-engine.js',
     'js/computer.js',
     'js/globals.js',
@@ -47,6 +48,12 @@ const ASSETS_TO_CACHE = [
     'js/cards/UtilityPairDefinitions.js'
 ];
 
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -57,15 +64,70 @@ self.addEventListener('install', (event) => {
     );
 });
 
+self.addEventListener('activate', (event) => {
+    const cacheWhitelist = [CACHE_NAME];
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheWhitelist.indexOf(cacheName) === -1) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            return self.clients.claim();
+        }).then(() => {
+            // Broadcast version to all clients
+            return self.clients.matchAll();
+        }).then(clients => {
+            clients.forEach(client => {
+                client.postMessage({
+                    type: 'VERSION',
+                    version: CACHE_NAME
+                });
+            });
+        })
+    );
+});
+
 self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    // Network-First for HTML (Main Page)
+    if (request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    // Update cache with new version
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(request, responseClone);
+                    });
+                    return response;
+                })
+                .catch(() => {
+                    // Fallback to cache if offline
+                    return caches.match(request);
+                })
+        );
+        return;
+    }
+
+    // Cache-First for Assets (Images, JS, CSS)
     event.respondWith(
-        caches.match(event.request)
+        caches.match(request)
             .then((response) => {
-                // Cache Hit - return response
                 if (response) {
                     return response;
                 }
-                return fetch(event.request);
+                return fetch(request).then((networkResponse) => {
+                    // Optional: Cache new assets dynamically? 
+                    // For safety, let's stick to static cache or specific dynamic cache logic.
+                    // But for now, just return network response.
+                    return networkResponse;
+                });
             })
     );
 });
