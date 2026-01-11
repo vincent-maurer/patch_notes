@@ -4705,6 +4705,7 @@ function createCustomJack(id, label, moduleDef, type = 'any') {
     el.style.left = 'auto';
     el.style.top = 'auto';
     el.style.zIndex = '200';
+    el.style.transform = 'none'; // Fix: Remove -50% offset from .component class
     el.setAttribute('data-type', 'jack');
 
     el.style.width = '28px'; // Reduced from 32px

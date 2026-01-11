@@ -345,17 +345,19 @@ const CARD_LIBRARY = [
         name: 'Eighties Bass',
         num: '28',
         desc: "Bass-oriented complete monosynth voice consisting of five detuned saw wave oscillators with mixable white noise.",
-        class: 'CardNoOp',
+        class: 'CardEightiesBass',
         category: 'Voice',
         labels: {
             'knob-large-computer': 'Cutoff',
-            'knob-small-x': 'Pitch Off',
-            'knob-small-y': 'Reson',
+            'knob-small-x': 'Pitch Offset',
+            'knob-small-y': 'Resonance',
             'switch-3way-computer': 'Filter',
             'jack-cv1in': 'Pitch',
             'jack-cv2in': 'Cutoff CV',
             'jack-audio1in': 'Detune',
-            'jack-audio2in': 'Noise Mix'
+            'jack-audio2in': 'Noise Mix',
+            'jack-audio1out': 'Audio Out',
+            'jack-audio2out': 'Audio Out'
         }
     },
     {
