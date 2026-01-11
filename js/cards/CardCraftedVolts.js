@@ -11,10 +11,10 @@ class CardCraftedVolts extends ComputerCard {
 
         // --- STATE ---
         this.wasPlugged = {
-            audio1: false,
-            audio2: false,
-            cv1: false,
-            cv2: false
+            audio1: 'force-update',
+            audio2: 'force-update',
+            cv1: 'force-update',
+            cv2: 'force-update'
         };
 
         if (!ctx) return; // Allow dummy mode

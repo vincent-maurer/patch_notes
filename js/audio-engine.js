@@ -100,7 +100,9 @@ class ToolboxProcessor extends AudioWorkletProcessor {
             { name: 'main', defaultValue: 0.5 },
             { name: 'x', defaultValue: 0 },
             { name: 'y', defaultValue: 0 },
-            { name: 'mode', defaultValue: 0 } // Switch: 0=Up, 1=Mid, 2=Down
+            { name: 'mode', defaultValue: 0 }, // Switch: 0=Up, 1=Mid, 2=Down
+            { name: 'connectedP1', defaultValue: 0 }, // 0 = False, 1 = True
+            { name: 'connectedCV1', defaultValue: 0 } // 0 = False, 1 = True
         ];
     }
 
@@ -108,9 +110,9 @@ class ToolboxProcessor extends AudioWorkletProcessor {
         super();
         this.noiseState = 2463534242;
         this.shVal = 0;
-        this.timer = 0;
-        this.clockTimer = 0;
-        this.coinTimer = 0;
+        this.timer = 0; // Clock Timer Phase (0..1)
+        this.clockTimer = 0; // Trigger Hold Timer
+        this.coinTimer = 0; // Trigger Hold Timer
         this.noiseType = 0;
         this.noiseTimer = 0;
         this.noiseVal = 0;
@@ -175,14 +177,20 @@ class ToolboxProcessor extends AudioWorkletProcessor {
         const paramX = parameters.x;
         const paramY = parameters.y;
         const paramMode = parameters.mode;
+        const paramConnP1 = parameters.connectedP1;
+        const paramConnCV1 = parameters.connectedCV1;
 
         for (let i = 0; i < 128; i++) {
             const pMain = paramMain.length > 1 ? paramMain[i] : paramMain[0];
             const pX = paramX.length > 1 ? paramX[i] : paramX[0];
             const pY = paramY.length > 1 ? paramY[i] : paramY[0];
+            // Connected params
+            const isConnP1 = (paramConnP1.length > 1 ? paramConnP1[i] : paramConnP1[0]) > 0.5;
+            const isConnCV1 = (paramConnCV1.length > 1 ? paramConnCV1[i] : paramConnCV1[0]) > 0.5;
+            
             const pMode = Math.round(paramMode.length > 1 ? paramMode[i] : paramMode[0]);
 
-            const a = inAudio1 ? inAudio1[i] : 1.0;     // Normalled to 1.0 (Full)?? C++ says 2047 (Full positive)
+            const a = inAudio1 ? inAudio1[i] : 1.0; 
             const c = inAudio2 ? inAudio2[i] : 1.0;
             const cv1 = inCV1 ? inCV1[i] : 0.0;
             const cv2 = inCV2 ? inCV2[i] : 0.0;
@@ -218,18 +226,16 @@ class ToolboxProcessor extends AudioWorkletProcessor {
 
             // --- CV LOGIC ---
             // CVOut1 = CV1 * CV2 (Ring Mod)
-            // C++: ((int32_t)CVIn1() * CVIn2()) >> 11;
-            if (outCV1) outCV1[i] = cv1 * cv2; // Assuming CV inputs are normalized -1 to 1
+            if (outCV1) outCV1[i] = cv1 * cv2; 
 
             // --- CLOCK LOGIC ---
             let clockTrig = false;
             
             // Pulse 1 Input detection (Schmitt Triggerish)
             const pulse1High = p1Val > 0.5;
-            if (inPulse1 && inPulse1.length > 0) { // Connected?
+            if (isConnP1) { // CONNECTED
                  if (pulse1High && !this.lastPulse1) clockTrig = true;
-            } else {
-                 // Internal Clock
+            } else { // UNPLUGGED -> Internal Clock
                  // Exp4000(KnobVal(Y) >> 1)
                  // Y is 0..1. 
                  // Simple exponential clock:
@@ -246,47 +252,22 @@ class ToolboxProcessor extends AudioWorkletProcessor {
                 this.clockTimer = 240; // ~5ms pulse at 48k
 
                 // S&H Sample
-                if (inCV1 && inCV1.length > 0) { // If connected (how to check connection efficiently? assume if buffer is not silent? No, inputs always exist. Need explicit 'connected' param? Or just assume if signal?)
-                     // AudioWorklet doesn't know about connections easily. 
-                     // C++ uses Connected(CV1).
-                     // We'll rely on CV1 behavior: if unplugged, it's 0. 
-                     // But we want to sample Noise if unplugged.
-                     // The problem: Unplugged input is 0s. 
-                     // We can't distinguish 0V signal from Unplugged.
-                     // Hack: We can use a small DC offset on inputs in JS wrapper passed via param?
-                     // Or just assume if |cv1| < epsilon, use Noise? No, zero-crossing exists.
-                     // Better: JS wrapper connects 'DC' bias to indicate connection?
-                     // Or just mix default noise: if (connected) sample CV, else sample Noise.
-                     // We will implement a 'connectedMask' parameter?
-                     // For now, let's just MIX them: S&H = CV1 + Noise (if CV1 is 0).
-                     // Actually logic is: If Connected(CV1) -> CV1. Else -> Noise.
-                     // We'll sample CV1. If user patches nothing, CV1 is 0. 
-                     // We will always sample CV1 + Noise * (1 - connectedCV1Param)?
-                     // Let's sample CV1. If it's consistently 0, maybe it's unconnected.
-                     // Revisit: use Noise if we think it is unconnected.
-                     // Let's blindly sample CV1 for now. If user wants Noise S&H, they patch Noise to CV1? 
-                     // No, internal normalisation. 
-                     // Let's add a 'connected' parameter bitmask.
-                     this.shVal = cv1; // Needs fix for normalisation
+                if (isConnCV1) { 
+                     this.shVal = cv1; 
                 } else {
                      this.shVal = n;
                 }
                 
-                // Pulse 2 Logic
-                // If Pulse 2 IN is High (or unplugged?), roll dice
-                // C++: PulseIn2() || Disconnected(Pulse2)
-                // Default effectively High.
-                // We'll assume Pulse 2 is Gate. If unplugged, we need to know.
-                // Let's assume High.
+                // Pulse 2 Logic (Coin Flip)
+                // If Pulse 2 IN is Unplugged or High -> Gate Open
+                const p2Gate = (!inPulse2) || (p2Val > 0.5); 
                 
-                const p2Gate = (!inPulse2) || (p2Val > 0.5); // if no input buf, assume high
                 if (p2Gate) {
                     let p2 = false;
-                    if (inPulse1) { // If external clock (Pulse 1 plugged)
+                    if (isConnP1) { // If external clock (Pulse 1 plugged)
                         p2 = this.coinflip(pY);
                     } else {
-                        p2 = (this.n & 1) === 1; // 50/50? C++ says (noise() & 1).
-                        // noise() is -2048 to 2048. Lower bit check.
+                        // Internal: 50% chance
                         p2 = this.coinflip(0.5);
                     }
                     if (p2) this.coinTimer = 240;
@@ -304,17 +285,11 @@ class ToolboxProcessor extends AudioWorkletProcessor {
             if (outCV2) outCV2[i] = this.shVal;
         }
 
-        // Output LED data every ~1024 samples (approx 21ms at 48k)
-        if (this.timer % 8 === 0) { // crude throttle logic if timer increments by small steps? 
-             // timer logic was float. better use a frame counter.
-        }
-
-        // Just use a simple counter
+        // Output LED data every ~16 frames (approx 40ms)
         if (!this.frameCnt) this.frameCnt = 0;
         this.frameCnt++;
-        if (this.frameCnt > 16) { // ~3ms? process is 128 samples. 16*128 = 2048 samples = 40ms. OK.
+        if (this.frameCnt > 16) { 
             this.frameCnt = 0;
-            // Send snapshot of current sample
             this.port.postMessage({
                 audio1: outAudio1 ? Math.abs(outAudio1[0]) : 0,
                 audio2: outAudio2 ? Math.abs(outAudio2[0]) : 0,

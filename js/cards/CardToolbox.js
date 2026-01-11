@@ -19,7 +19,9 @@ class CardToolbox extends ComputerCard {
                     main: 0.5,
                     x: 0,
                     y: 0,
-                    mode: 0
+                    mode: 0,
+                    connectedP1: 0,
+                    connectedCV1: 0
                 }
             });
         } catch (e) {
@@ -36,6 +38,8 @@ class CardToolbox extends ComputerCard {
         this.pX = this.worklet.parameters.get('x');
         this.pY = this.worklet.parameters.get('y');
         this.pMode = this.worklet.parameters.get('mode');
+        this.pConnP1 = this.worklet.parameters.get('connectedP1');
+        this.pConnCV1 = this.worklet.parameters.get('connectedCV1');
     }
 
     mount() {
@@ -75,6 +79,12 @@ class CardToolbox extends ComputerCard {
         this.io.pulse2In.disconnect(this.worklet, 0, 5);
     }
 
+    // Helper to check connection
+    isPlugged(jackId) {
+        if (typeof cableData === 'undefined') return false;
+        return cableData.some(c => c.start === jackId || c.end === jackId);
+    }
+
     update(p, time) {
         if (!this.worklet) return;
 
@@ -92,6 +102,14 @@ class CardToolbox extends ComputerCard {
         // Actually, toolbox.cpp says Down -> noiseType++.
         // We'll trust p.switch logic is 0=Up, 1=Mid, 2=Down.
         this.pMode.setValueAtTime(p.switch, time);
+
+        // Check Connections
+        const p1Plugged = this.isPlugged('jack-pulse1in');
+        const cv1Plugged = this.isPlugged('jack-cv1in');
+
+        // Update Params
+        this.pConnP1.setValueAtTime(p1Plugged ? 1 : 0, time);
+        this.pConnCV1.setValueAtTime(cv1Plugged ? 1 : 0, time);
     }
 
     updateLEDs(data) {
