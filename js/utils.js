@@ -855,21 +855,54 @@ function injectPrintStyles() {
             overflow: visible !important;
         }
 
+        /* DARK MODE PRINT FIX: Invert white knobs to black so they show on white paper */
+        ${document.body.classList.contains('dark-mode') ? `
+        .knob-img {
+            filter: invert(1) !important;
+        }
+        ` : ''}
+
         #synthContainer {
             position: relative !important;
             border: 1px solid #000 !important; box-shadow: none !important;
             background-color: #fff !important;
             border-radius: 0px;
-            /* Shift right to make room for left rack, then subtract half the difference between L/R extras to optical center? 
-               Easier: just set margin-left to leftExtra. flex-align center on wrapper will center the BLOCK (synth+margin).
-               Wait, flexible centering centers the box. If the box has margin, the margin is included.
-               If I set margin-left: ${leftExtra}px, the synth moves right. 
-               The block width is effectively synthW + leftExtra. 
-               If rightExtra is 0, visual center is off.
-               Let's try explicit margin logic: */
             margin: 0 !important;
             margin-left: ${leftExtra}px !important; 
             margin-right: ${rightExtra}px !important;
+            overflow: visible !important;
+        }
+
+        /* FORCE VISIBILITY & RESET COLORS */
+        .panel-art-img, .component, .cable-svg {
+            opacity: 1.0 !important;
+            filter: none !important;
+        }
+        
+        .cable-svg path {
+            fill: none !important;       /* No blob fills */
+            opacity: 1.0 !important;     /* Force opaque */
+            stroke-opacity: 1.0 !important; /* Force visible stroke */
+        }
+        
+        /* Exception for cables having their own colors */
+        .cable-svg path {
+            color: auto !important;
+            fill: none !important;
+        }
+
+        /* FIX: Ensure Knob Range Overlays do NOT fill and cover the knob */
+        .knob-range-path {
+            fill: none !important;
+            stroke: #000 !important; /* Make range visible */
+            opacity: 1.0 !important;
+        }
+
+        /* FIX: Ensure Knob Images are visible */
+        .knob-img {
+            opacity: 1.0 !important;
+            display: block !important;
+            z-index: 20 !important;
         }
         
         #pedalboard.open {

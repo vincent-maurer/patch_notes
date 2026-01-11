@@ -147,6 +147,10 @@ function toggleLabels() {
     showComponentLabels = !showComponentLabels;
     renderComponentLabels();
 
+    // Toggle body class for note visibility (CSS handled)
+    if (showComponentLabels) document.body.classList.add('show-labels');
+    else document.body.classList.remove('show-labels');
+
     // Update button visual state
     const btn = document.getElementById('labelsToggle');
     if (btn) {
@@ -311,8 +315,18 @@ function createComponent(id, config) {
         const initialTouch = !!(saved && saved.isTouched);
         setSwitchState(el, initialVal, initialTouch);
         if (initialTouch) el.classList.add('is-touched');
+        if (initialTouch) el.classList.add('is-touched');
         el.appendChild(document.createElement('div')).className = 'switch-handle';
-        el.addEventListener('dblclick', (e) => { e.preventDefault(); resetSwitch(el); });
+
+        // Fix for accidental double-click reset: Require Mod Key, or just make it strict?
+        // User Request: "make that not a problem? maybe only fast double click?"
+        // Solution: Standardize Reset to ALT + Double Click for switches to prevent conflict with rapid toggling
+        el.addEventListener('dblclick', (e) => {
+            if (e.altKey || e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                resetSwitch(el);
+            }
+        });
     }
     addTouchLongPress(el);
     el.addEventListener('contextmenu', showContextMenu);
@@ -637,6 +651,7 @@ function redrawCables() {
     elementsToRemove.forEach(el => el.remove());
     cableData.forEach(c => drawCable(c.start, c.end, c.color, false, 0, 0, c.droopOffset, c.label));
     updatePedalCables();
+    updateFocusState();
 }
 
 function removeCable(s, e, preserveHitBox = false) {
@@ -1199,6 +1214,10 @@ function stopCableDrag() {
 
 function updateKnobAngle(el, val, isTouched = true) {
     el.style.setProperty('--angle', val);
+
+    if (isTouched) el.classList.add('is-touched');
+    else el.classList.remove('is-touched');
+
     const existingState = componentStates[el.id] || {};
     componentStates[el.id] = {
         ...existingState,
@@ -1207,6 +1226,7 @@ function updateKnobAngle(el, val, isTouched = true) {
         isTouched: isTouched
     };
     updateAudioParams();
+    updateFocusState();
 }
 
 function resetKnob(el) {
@@ -1445,6 +1465,7 @@ function setSwitchState(el, state, isTouched = true) {
         el.classList.remove('is-touched');
     }
     updateAudioParams();
+    updateFocusState();
 }
 function handleSwitchClick(e) { const el = e.currentTarget; const states = el.dataset.type.includes('3way') ? 3 : 2; setSwitchState(el, (parseInt(el.getAttribute('data-state') || 0) + 1) % states); el.classList.add('is-touched'); saveState(); }
 function resetSwitch(el) {
@@ -1460,10 +1481,14 @@ function handleButtonClick(e) {
     const existing = componentStates[el.id] || {};
     componentStates[el.id] = { ...existing, type: 'button', value: val, isTouched: true };
     updateAudioParams();
+    updateFocusState();
     saveState();
 }
 
 function createNoteElement(d) {
+    // Auto-show labels/notes if hidden
+    if (!showComponentLabels) toggleLabels();
+
     const el = document.createElement('div'); el.className = 'note-element'; el.id = d.id; el.style.left = d.x; el.style.top = d.y; el.textContent = d.text; el.contentEditable = true;
     if (d.color) el.style.color = d.color; if (d.backgroundColor) el.style.backgroundColor = d.backgroundColor; if (d.border) el.style.border = d.border; if (!d.color) el.classList.add('default-style');
     el.addEventListener('mousedown', startDragNote); el.addEventListener('touchstart', startDragNote); el.addEventListener('blur', saveState); el.addEventListener('contextmenu', showContextMenu);
@@ -1554,6 +1579,33 @@ function startSwitchDrag(e) {
         return;
     }
     // -----------------------------
+
+    // --- MOMENTARY SWITCH LOGIC (Shift + Click) ---
+    if (e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const is3Way = currentSwitchEl.dataset.type.includes('3way');
+        // Define "Momentary Down" as the last state (2 for 3-way, 1 for 2-way)
+        const downState = is3Way ? 2 : 1;
+        // Define "Return" state (Middle for 3-way, Top/0 for 2-way)
+        const returnState = is3Way ? 1 : 0;
+
+        setSwitchState(currentSwitchEl, downState);
+        triggerHandlingNoise();
+
+        const onUp = () => {
+            setSwitchState(currentSwitchEl, returnState);
+            triggerHandlingNoise();
+            window.removeEventListener('mouseup', onUp);
+            window.removeEventListener('touchend', onUp);
+        };
+
+        window.addEventListener('mouseup', onUp);
+        window.addEventListener('touchend', onUp);
+        return; // Skip drag logic
+    }
+
     e.preventDefault();
     e.stopPropagation();
     isDraggingSwitch = true;
@@ -2077,13 +2129,10 @@ function handleVoltageGroupLogic(targetEl, isMulti) {
             return b && parseInt(b.getAttribute('data-state') || 0) === 1;
         });
 
-        if (!anyActive) {
-            // If we just turned off the last one, force it back on
-            setBtnState(targetEl.id, true);
-        }
     }
 
     updateAudioParams();
+    updateFocusState();
     saveState();
 }
 
@@ -2128,7 +2177,19 @@ function hideExportMenu() {
 
 function setupExportHandlers() {
     const menu = document.getElementById('exportMenu');
-    document.getElementById('exportMenuToggle').addEventListener('click', showExportMenu);
+
+    // NEW: Left Click = Download PNG, Right Click = Show Menu
+    const exportBtn = document.getElementById('exportMenuToggle');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            savePatchAsPng();
+        });
+        exportBtn.addEventListener('contextmenu', (e) => {
+            showExportMenu(e);
+        });
+    }
 
     // System Menu
     const sysBtn = document.getElementById('systemMenuToggle');
@@ -2234,6 +2295,7 @@ function setupExportHandlers() {
             case 'savePngButton':
                 savePatchAsPng();
                 break;
+
             case 'shareUrlButton':
                 const optimized = optimizeState(getCurrentPatchState());
                 const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(optimized));
@@ -2243,94 +2305,176 @@ function setupExportHandlers() {
                 navigator.clipboard.writeText(u).then(() => showMessage("URL Copied!", "success"));
                 break;
             case 'savePdfButton':
-                const patchName = document.getElementById('patchNameInput').value || "Untitled Patch";
-                const notes = document.getElementById('globalNotesArea').value;
+                // 1. Capture Current State
                 const wrapper = document.getElementById('mainContentWrapper');
+                const toolbar = document.getElementById('mainToolbar');
+                const nameInputBox = document.getElementById('patchNameInput')?.parentElement;
+                const notesAreaBox = document.getElementById('globalNotesArea')?.parentElement;
+                const appHeader = document.getElementById('appHeader');
+                const pedalboard = document.getElementById('pedalboard');
                 const savedViewport = { ...VIEWPORT };
-                wrapper.style.removeProperty('transform');
-                wrapper.style.removeProperty('transform-origin');
+
+                // 2. Hide UI Elements
+                if (toolbar) toolbar.style.display = 'none';
+                if (nameInputBox) nameInputBox.style.display = 'none';
+                if (notesAreaBox) notesAreaBox.style.display = 'none';
+                if (appHeader) appHeader.style.display = 'none';
+
+                let wasPbOpen = false;
+                if (pedalboard) {
+                    wasPbOpen = pedalboard.classList.contains('open');
+                    if (!wasPbOpen) {
+                        pedalboard.style.display = 'none';
+                    } else {
+                        pedalboard.style.border = 'none';
+                        pedalboard.style.boxShadow = 'none';
+                        // Keep background transparent or styled as needed for print
+                    }
+                }
+
+                document.body.classList.add('exporting');
+
+                // 3. Reset Transform & Setup Print View
+                wrapper.style.transform = 'none';
+                wrapper.style.transformOrigin = 'top left';
                 VIEWPORT.scale = 1.0;
                 VIEWPORT.x = 0;
                 VIEWPORT.y = 0;
                 updateInterfaceScaling();
 
-                let header = document.querySelector('.print-header');
-                if (!header) {
-                    header = document.createElement('div');
-                    header.className = 'print-header';
-                    wrapper.prepend(header);
+                // 4. Inject Title & Notes (Print Header)
+                const patchName = document.getElementById('patchNameInput').value || "Untitled Patch";
+                const notes = document.getElementById('globalNotesArea').value;
+                const isDark = document.body.classList.contains('dark-mode');
+                const textColor = isDark ? '#fbbf24' : '#000000'; // Match PNG logic
+
+                const printHeader = document.createElement('div');
+                printHeader.className = 'print-header-temp';
+                printHeader.style.cssText = `text-align: center; margin: 20px 0; font-family: Helvetica, Arial, sans-serif; color: ${textColor};`;
+                printHeader.innerHTML = `<h1 style="font-size: 2.5rem; font-weight: bold; margin: 0;">${patchName}</h1>`;
+                wrapper.insertBefore(printHeader, document.getElementById('synthContainer'));
+
+                const printNotes = document.createElement('div');
+                printNotes.className = 'print-notes-temp';
+                if (notes && notes.trim() !== "") {
+                    printNotes.style.cssText = `
+                        text-align: left; margin: 30px 40px; font-family: 'Courier New', monospace; 
+                        white-space: pre-wrap; color: ${textColor}; font-size: 1.2rem; line-height: 1.5;
+                        border-top: 1px solid ${isDark ? '#3f3f46' : '#e5e7eb'}; padding-top: 20px;
+                    `;
+                    printNotes.textContent = notes;
+                    wrapper.appendChild(printNotes);
                 }
-                header.innerHTML = `<h1>${patchName}</h1>`;
 
-                let notesDiv = document.querySelector('.print-notes');
-                if (!notesDiv) {
-                    notesDiv = document.createElement('div');
-                    notesDiv.className = 'print-notes';
-                    wrapper.appendChild(notesDiv);
-                }
-                notesDiv.innerText = notes;
-
-                if (typeof injectPrintStyles === 'function') injectPrintStyles();
-
-                // Keep external gear in its original position (to the right/left)
-                // Just ensure it's visible - no repositioning needed
+                // 5. Layout Calculation (Center Content + External Gear)
+                const synthContainer = document.getElementById('synthContainer');
                 const leftRack = document.getElementById('externalGearRackLeft');
                 const rightRack = document.getElementById('externalGearRackRight');
-                const hasGear = (leftRack && leftRack.children.length > 0) || (rightRack && rightRack.children.length > 0);
 
-                const wasDark = document.body.classList.contains('dark-mode');
-                if (wasDark) {
-                    document.body.classList.remove('dark-mode');
-                    const panelImg = document.querySelector('.panel-art-img');
-                    if (panelImg) panelImg.src = 'images/panel_image.svg';
-                    document.querySelectorAll('.knob-img').forEach(img => {
-                        img.src = img.src.replace('_dark.svg', '.svg');
-                    });
+                const originalWrapperWidth = wrapper.style.width;
+                const originalWrapperDisplay = wrapper.style.display;
+                const originalWrapperJustify = wrapper.style.justifyContent;
+
+                // Determine widths to ensure everything fits
+                let totalWidth = synthContainer.offsetWidth;
+                const hasLeft = leftRack && leftRack.children.length > 0;
+                const hasRight = rightRack && rightRack.children.length > 0;
+
+                if (hasLeft || hasRight) {
+                    const rackSpace = 300; // Est rack width + margins
+                    totalWidth += (rackSpace * 2); // Symmetric spacing usually
                 }
+                totalWidth += 100; // Safety padding
 
-                await new Promise(r => setTimeout(r, 150));
-                updatePedalCables();
-                redrawCables();
+                // Apply Print Container Styles (Centering)
+                wrapper.style.width = `${totalWidth}px`;
+                wrapper.style.display = 'flex';
+                wrapper.style.flexDirection = 'column';
+                wrapper.style.alignItems = 'center';
 
-                // Fix cable scaling alignment for print:
-                // We force the SVG to adopt the exact pixel dimensions of the container as its viewBox.
-                // This ensures that if the container is resized (shrunk) by the print layout,
-                // the internal SVG coordinates scale down proportionally instead of remaining fixed in pixels.
+                // 6. Fix Knob Rotation (Move rotation from container to img to avoid clipping/issues)
+                const knobs = wrapper.querySelectorAll('.knob-large, .knob-medium, .knob-small, .pedal-knob');
+                knobs.forEach(k => {
+                    const angle = k.style.getPropertyValue('--angle') || 0;
+                    if (k.classList.contains('component') && !k.classList.contains('custom-knob-bg')) {
+                        // It's a standard component knob
+                        k.style.transform = `translate(-50%, -50%)`; // Remove container rotation
+                        const innerImg = k.querySelector('.knob-img');
+                        if (innerImg) {
+                            innerImg.style.transform = `rotate(${angle}deg)`;
+                            innerImg.dataset.wasRotated = 'true'; // Marker for cleanup
+                        }
+                    } else {
+                        // Pedal knobs or custom knobs might rotate the container itself
+                        // Ensure backgroundImage is set correctly if needed (usually is)
+                    }
+                });
+
+                // 7. Fix SVG Cable Scaling
                 const cableLayer = document.getElementById('cableLayer');
-                const synthCont = document.getElementById('synthContainer');
-                if (cableLayer && synthCont) {
-                    const w = synthCont.offsetWidth;
-                    const h = synthCont.offsetHeight;
+                if (cableLayer && synthContainer) {
+                    const w = synthContainer.offsetWidth;
+                    const h = synthContainer.offsetHeight;
                     cableLayer.setAttribute('viewBox', `0 0 ${w} ${h}`);
                 }
 
-                window.print();
+                updatePedalCables();
+                redrawCables();
 
-                if (cableLayer) cableLayer.removeAttribute('viewBox');
-
-                Object.assign(VIEWPORT, savedViewport);
-                if (wasDark) {
-                    document.body.classList.add('dark-mode');
-                    const panelImg = document.querySelector('.panel-art-img');
-                    if (panelImg) panelImg.src = 'images/panel_image_dark.svg';
-                    document.querySelectorAll('.knob-img').forEach(img => {
-                        img.src = img.src.replace('.svg', '_dark.svg');
-                    });
-                }
-
-                // Restore external gear position
-                if (hasGear) {
-                    // No specific restoration needed as they weren't repositioned
-                }
-
-                updateViewport();
-                updateInterfaceScaling();
-                header.remove();
-                notesDiv.remove();
+                // 8. Print (Delayed to ensure repaint)
                 setTimeout(() => {
+                    window.print();
+
+                    // 9. Cleanup / Restore
+                    // Restore UI Visibility
+                    if (toolbar) toolbar.style.display = '';
+                    if (nameInputBox) nameInputBox.style.display = '';
+                    if (notesAreaBox) notesAreaBox.style.display = '';
+                    if (appHeader) appHeader.style.display = '';
+                    document.body.classList.remove('exporting');
+
+                    // Restore Wrapper
+                    wrapper.style.width = originalWrapperWidth;
+                    wrapper.style.display = originalWrapperDisplay;
+                    wrapper.style.justifyContent = originalWrapperJustify;
+                    if (printHeader) printHeader.remove();
+                    if (printNotes) printNotes.remove();
+
+                    // Restore Viewport
+                    Object.assign(VIEWPORT, savedViewport);
+                    updateViewport();
+                    updateInterfaceScaling();
+
+                    // Restore Pedalboard
+                    if (pedalboard) {
+                        if (!wasPbOpen) pedalboard.style.display = ''; // or default from CSS
+                        pedalboard.style.border = '';
+                        pedalboard.style.boxShadow = '';
+                        pedalboard.style.background = '';
+                    }
+
+                    // Restore Knobs
+                    knobs.forEach(k => {
+                        const angle = k.style.getPropertyValue('--angle') || 0;
+                        if (k.classList.contains('component') && !k.classList.contains('custom-knob-bg')) {
+                            // Restore container rotation
+                            k.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+                            const innerImg = k.querySelector('.knob-img');
+                            if (innerImg) {
+                                innerImg.style.transform = '';
+                                delete innerImg.dataset.wasRotated;
+                            }
+                        }
+                    });
+
+                    // Restore SVG ViewBox
+                    if (cableLayer) cableLayer.removeAttribute('viewBox');
+
+                    // Final Redraw to be sure
                     updatePedalCables();
                     redrawCables();
-                }, 100);
+
+                }, 500);
                 break;
 
             case 'saveGearButton':
@@ -2453,16 +2597,33 @@ function savePatchAsPng() {
         let imgUrl = '';
         if (k.classList.contains('knob-large')) imgUrl = isDark ? 'url("images/largeKnob_dark.svg")' : 'url("images/largeKnob.svg")';
         else if (k.classList.contains('knob-medium')) imgUrl = isDark ? 'url("images/mediumKnob_dark.svg")' : 'url("images/mediumKnob.svg")';
-        else if (k.classList.contains('knob-small') || k.classList.contains('pedal-knob')) imgUrl = isDark ? 'url("images/smallKnob_dark.svg")' : 'url("images/images/smallKnob.svg")';
+        else if (k.classList.contains('knob-small') || k.classList.contains('pedal-knob')) imgUrl = isDark ? 'url("images/smallKnob_dark.svg")' : 'url("images/smallKnob.svg")';
 
         const angle = k.style.getPropertyValue('--angle') || 0;
-        k.style.backgroundImage = imgUrl;
-        k.style.backgroundRepeat = 'no-repeat';
-        k.style.backgroundPosition = 'center';
-        k.style.backgroundSize = 'contain';
 
-        if (k.classList.contains('component') && !k.classList.contains('custom-knob-bg')) k.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
-        else k.style.transform = `rotate(${angle}deg)`;
+        // FIX: For main components, rotate the child IMG, not the container (to avoid rotating labels)
+        if (k.classList.contains('component') && !k.classList.contains('custom-knob-bg')) {
+            // Reset container transform (maintain position)
+            k.style.transform = `translate(-50%, -50%)`;
+
+            // Rotate the inner image explicitly (bypassing CSS var issues in export)
+            const innerImg = k.querySelector('.knob-img');
+            if (innerImg) {
+                innerImg.style.transform = `rotate(${angle}deg)`;
+            }
+
+            // NOTE: We do NOT set backgroundImage on k here because it would be behind the img anyway,
+            // or if we did, we'd need to ensure it doesn't conflict. 
+            // The original code set background which implies it wanted to replace the img or ensure it renders.
+            // If we trust innerImg, we don't need background on k.
+        } else {
+            // For pedals or non-componenets, rotate the element itself (label is likely a sibling)
+            k.style.backgroundImage = imgUrl;
+            k.style.backgroundRepeat = 'no-repeat';
+            k.style.backgroundPosition = 'center';
+            k.style.backgroundSize = 'contain';
+            k.style.transform = `rotate(${angle}deg)`;
+        }
     });
 
     // Calculate dimensions including external gear racks
@@ -4557,10 +4718,7 @@ function createCustomJack(id, label, moduleDef, type = 'any') {
         el.classList.add('custom-jack-out');
     }
 
-    // Fix Centering: Remove the translate(-50%, -50%) from .jack/.component classes
-    el.style.transform = 'none';
 
-    el.addEventListener('click', handleJackClick);
     el.addEventListener('mousedown', handleJackMouseDown);
     el.addEventListener('touchstart', handleJackMouseDown, { passive: false });
 
@@ -4731,6 +4889,83 @@ function toggleMIDI() {
         if (btn) btn.classList.remove('btn-group-last'); // Restore square edge
     }
     updateAudioGraph();
+}
+
+// --- FOCUS MODE ---
+let isFocusMode = false;
+function toggleFocusMode() {
+    isFocusMode = !isFocusMode;
+    const btn = document.getElementById('focusToggle');
+
+    if (isFocusMode) {
+        document.body.classList.add('patch-focus-mode');
+        btn?.classList.add('focus-active');
+        btn?.classList.add('btn-active');
+        updateFocusState(); // Calculate connected jacks
+        showMessage("Focus Mode: Unused Jacks Dimmed", "success");
+    } else {
+        document.body.classList.remove('patch-focus-mode');
+        btn?.classList.remove('focus-active');
+        btn?.classList.remove('btn-active');
+        // Cleanup classes
+        document.querySelectorAll('.focus-connected').forEach(el => el.classList.remove('focus-connected'));
+        showMessage("Focus Mode Disabled", "neutral");
+    }
+}
+
+function updateFocusState() {
+    if (!isFocusMode) return;
+
+    // 1. Reset all focus classes
+    document.querySelectorAll('.focus-connected').forEach(el => el.classList.remove('focus-connected'));
+    document.querySelectorAll('.focus-edited').forEach(el => el.classList.remove('focus-edited'));
+
+    // 2. Find connected jacks from cableData
+    const connectedIds = new Set();
+    cableData.forEach(cable => {
+        connectedIds.add(cable.start);
+        connectedIds.add(cable.end);
+    });
+
+    // 3. Highlight connected jacks
+    connectedIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('focus-connected');
+    });
+
+    // 4. Highlight Edited Controls (Knobs, Switches, Buttons)
+    for (const [id, state] of Object.entries(componentStates)) {
+        const config = SYSTEM_CONFIG[id];
+        const el = document.getElementById(id);
+        if (!el || !config) continue;
+
+        let isEdited = false;
+
+        // -- Knobs --
+        if (config.type.startsWith('knob')) {
+            const currentVal = state.value || 0;
+            const defVal = config.defValue !== undefined ? config.defValue : 0;
+            // Tolerance for float comparison if needed, but usually exact for defaults
+            if (Math.abs(currentVal - defVal) > 1.0) isEdited = true;
+        }
+        // -- Switches --
+        else if (config.type.startsWith('switch')) {
+            const currentVal = state.value || 0;
+            const defVal = config.defValue !== undefined ? config.defValue : 0;
+            if (currentVal !== defVal) isEdited = true;
+        }
+        // -- Buttons (Active State) --
+        else if (config.type.startsWith('button')) {
+            // If button is active (state 1), it's "interesting"
+            // Special handling for 4 Voltages defaults could go here if needed,
+            // but generally active = relevant.
+            if (state.value == 1) isEdited = true;
+        }
+
+        if (isEdited) {
+            el.classList.add('focus-edited');
+        }
+    }
 }
 
 function focusView() {

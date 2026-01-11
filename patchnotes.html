@@ -20,7 +20,7 @@
             <h1
                 style="font-size: 1rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin: 0; letter-spacing: 2px;">
                 Workshop System Patch Notes</h1>
-            <div id="appVersion" style="font-size: 0.7rem; color: var(--text-muted);">v2.73</div>
+            <div id="appVersion" style="font-size: 0.7rem; color: var(--text-muted);">v2.76</div>
         </div>
 
         <div id="mainToolbar">
@@ -30,19 +30,28 @@
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
-                <button id="labelsToggle" class="toolbar-btn btn-active" title="Toggle Labels">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                    </svg>
-                    <!-- <span class="hidden sm:inline">Labels</span> -->
-                </button>
+
                 <button id="fullscreenToggle" class="toolbar-btn" title="Full Screen">
                     <svg viewBox="0 0 24 24">
                         <path
                             d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
                         </path>
                     </svg>
+                </button>
+                <button id="labelsToggle" class="toolbar-btn" title="Toggle Labels">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <!-- <span class="hidden sm:inline">Labels</span> -->
+                </button>
+                <button id="focusToggle" class="toolbar-btn" title="Focus Mode (Dim Unused)"
+                    onclick="toggleFocusMode()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <!-- <span class="hidden sm:inline">Focus</span> -->
                 </button>
                 <button id="perfToggle" class="toolbar-btn" title="Performance Mode">
                     <svg viewBox="0 0 24 24">
@@ -512,6 +521,7 @@
     <script src="js/cards/ComputerCard.js"></script>
     <script src="js/cards/CardReverb.js"></script>
     <script src="js/cards/CardTuring.js"></script>
+    <script src="js/cards/CardBenjolin.js"></script>
     <script src="js/cards/CardMIDI.js"></script>
     <script src="js/cards/CardCV.js"></script>
     <script src="js/cards/CardDualDelay.js"></script>

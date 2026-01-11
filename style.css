@@ -898,11 +898,15 @@ body.dark-mode .knob-range-path {
     width: 100%;
     height: 25%;
     background: var(--switch-bg);
-    opacity: 0.5;
+    opacity: 0.8;
+    /* Increased for visibility */
     transition: top 0.1s ease-out, background 0.1s, opacity 0.3s;
     pointer-events: none;
     border: 1px solid var(--switch-border);
-    border-radius: 10px;
+    border-radius: 4px;
+    /* Slight rounding */
+    z-index: 2;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .is-touched .switch-handle {
@@ -914,28 +918,86 @@ body.dark-mode .knob-range-path {
     height: 40%;
 }
 
+/* --- Stem Logic (Dark Mode Only) --- */
+.switch-2way::after,
+.switch-3way::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8ifpx;
+    /* Wider */
+    background: #333;
+    transform: translateX(-50%);
+    /* Pivot from center horizontally */
+    z-index: 1;
+    transition: height 0.1s, transform 0.1s;
+    display: none;
+    /* Hidden in light mode */
+    border-radius: 2px;
+}
+
+body.dark-mode .switch-2way::after,
+body.dark-mode .switch-3way::after {
+    display: block;
+}
+
+/* 2-Way States */
+/* Top State: Stem grows Up from Center */
 .switch-2way[data-state="0"] .switch-handle {
     top: 0%;
 }
 
+.switch-2way[data-state="0"]::after {
+    height: 30%;
+    transform: translate(-50%, -100%);
+    /* Move up by its height */
+}
+
+/* Bottom State: Stem grows Down from Center */
 .switch-2way[data-state="1"] .switch-handle {
     top: 60%;
+}
+
+.switch-2way[data-state="1"]::after {
+    height: 30%;
+    transform: translate(-50%, 0);
 }
 
 .switch-3way .switch-handle {
     height: 25%;
 }
 
+/* 3-Way States */
+/* Top */
 .switch-3way[data-state="0"] .switch-handle {
     top: 0%;
 }
 
+.switch-3way[data-state="0"]::after {
+    height: 38%;
+    transform: translate(-50%, -95%);
+    /* Slightly tucked */
+}
+
+/* Middle */
 .switch-3way[data-state="1"] .switch-handle {
     top: 40%;
 }
 
+.switch-3way[data-state="1"]::after {
+    height: 0;
+    /* Hidden/Dot */
+}
+
+/* Bottom */
 .switch-3way[data-state="2"] .switch-handle {
     top: 80%;
+}
+
+.switch-3way[data-state="2"]::after {
+    height: 38%;
+    transform: translate(-50%, -5%);
 }
 
 .button {
@@ -975,6 +1037,48 @@ body.dark-mode .knob-range-path {
 .led.active {
     background-color: #ef4444;
     box-shadow: 0 0 6px #ef4444, inset 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.2), inset 0 0 5px rgba(239, 68, 68, 0.1);
+        background-color: rgba(239, 68, 68, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), inset 0 0 12px rgba(239, 68, 68, 0.3);
+        background-color: rgba(239, 68, 68, 0.3);
+    }
+
+    100% {
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.2), inset 0 0 5px rgba(239, 68, 68, 0.1);
+        background-color: rgba(239, 68, 68, 0.15);
+    }
+}
+
+/* 4 Voltages - Dark Mode Glow Bleed */
+body.dark-mode #button-1:not([data-state="1"]),
+body.dark-mode #button-2:not([data-state="1"]),
+body.dark-mode #button-3:not([data-state="1"]),
+body.dark-mode #button-4:not([data-state="1"]) {
+    /* Darker Red "Off" State (Unlit Translucent Plastic) */
+    background-color: rgba(153, 27, 27, 0.6);
+    /* Red-800 with opacity */
+    box-shadow: 0 0 5px rgba(220, 38, 38, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(153, 27, 27, 0.5);
+    opacity: 1.0 !important;
+}
+
+/* 4 Voltages - Dark Mode Active State (Bright Red Source) */
+body.dark-mode #button-1[data-state="1"],
+body.dark-mode #button-2[data-state="1"],
+body.dark-mode #button-3[data-state="1"],
+body.dark-mode #button-4[data-state="1"] {
+    background-color: #ef4444 !important;
+    /* Red-500 */
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 5px rgba(255, 200, 200, 0.5) !important;
+    border: 1px solid #f87171 !important;
+    opacity: 1.0 !important;
 }
 
 .note-element {
@@ -2247,17 +2351,14 @@ input[type=range].vertical-range::-webkit-slider-thumb {
 
     html,
     body {
-        width: 100%;
-        height: 100%;
         margin: 0 !important;
         padding: 0 !important;
         background-color: #ffffff !important;
-        overflow: hidden !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
-    /* Hide UI */
+    /* Basic Visibility Toggles - Layout logic handled by JS auto-scaling */
     #mainToolbar,
     #appHeader,
     #virtualKeyboard,
@@ -2270,15 +2371,8 @@ input[type=range].vertical-range::-webkit-slider-thumb {
     #patchNameInput,
     #globalNotesArea,
     .themed-box,
-    #mainContentWrapper>div:not(#synthContainer):not(#pedalboard):not(.print-header):not(.print-notes) {
+    .component-label {
         display: none !important;
-    }
-
-    #synthContainer {
-        border: 1px solid #000 !important;
-        box-shadow: none !important;
-        margin: 0 auto 20px auto !important;
-        background-color: #fff !important;
     }
 
     .print-header {
@@ -2286,6 +2380,8 @@ input[type=range].vertical-range::-webkit-slider-thumb {
         text-align: center;
         width: 100%;
         margin-bottom: 20px;
+        position: absolute;
+        top: -50px;
     }
 
     .print-notes {
@@ -2294,6 +2390,35 @@ input[type=range].vertical-range::-webkit-slider-thumb {
         font-family: monospace;
         white-space: pre-wrap;
         color: #000;
+        text-align: left;
+    }
+
+    /* VISIBILITY & OPACITY FIXES */
+    .panel-art-img,
+    .component {
+        opacity: 1.0 !important;
+        filter: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        position: absolute !important;
+    }
+
+    .component {
+        opacity: 1.0 !important;
+        filter: none !important;
+    }
+
+    .cable-svg {
+        opacity: 1.0 !important;
+        z-index: 80 !important;
+    }
+
+    .cable-svg path {
+        fill: none !important;
+        opacity: 1.0 !important;
+        stroke-opacity: 1.0 !important;
     }
 }
 
@@ -2610,8 +2735,8 @@ body.dark-mode .card-lib-btn:hover {
     left: 50%;
     transform: translateX(-50%);
     top: 100%;
-    margin-top: 14px;
-    /* Increased from 6px */
+    margin-top: 5px;
+    /* Reduced margin to be closer */
     text-align: center;
     font-size: 11px;
     font-family: 'Roboto Mono', monospace;
@@ -2647,11 +2772,11 @@ body.dark-mode .component-label {
 
 /* Specific Adjustments */
 .component.jack .component-label {
-    margin-top: 16px;
+    margin-top: 8px;
 }
 
 .component.knob-small .component-label {
-    margin-top: 14px;
+    margin-top: 5px;
 }
 
 /* Custom Module Labels (Inputs) */
@@ -2706,4 +2831,148 @@ body.dark-mode .custom-jack-out {
 
 body.dark-mode .custom-knob-bg {
     background-image: url("images/smallKnob_dark.svg");
+}
+
+/* ==========================================================================
+   FOCUS MODE (Patch Readability)
+   ========================================================================== */
+body.patch-focus-mode #synthBg,
+body.patch-focus-mode .panel-art-img {
+    opacity: 0.15 !important;
+    filter: grayscale(100%) contrast(1.2);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* Dim Unused Jacks */
+body.patch-focus-mode .component.jack {
+    opacity: 0.1;
+    transition: opacity 0.3s ease;
+    z-index: 70 !important;
+    /* Below cables (80) */
+}
+
+/* Keep Connected Jacks Bright */
+body.patch-focus-mode .component.jack.focus-connected {
+    opacity: 1.0 !important;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    /* Highlight active ports */
+}
+
+/* Keep Knobs/Switches/Buttons/LEDs Bright */
+body.patch-focus-mode .component.knob-large,
+body.patch-focus-mode .component.knob-medium,
+body.patch-focus-mode .component.knob-small,
+body.patch-focus-mode .component.switch-2way,
+body.patch-focus-mode .component.switch-3way,
+body.patch-focus-mode .component.button,
+body.patch-focus-mode .component.led,
+body.patch-focus-mode .note-element,
+body.patch-focus-mode .program-card,
+body.patch-focus-mode .pedal {
+    opacity: 1.0 !important;
+    /* Optional: Slight pop */
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Button Active State */
+.toolbar-btn.focus-active {
+    color: var(--text-brand);
+    background-color: var(--bg-hover);
+    border-color: var(--text-brand);
+}
+
+/* ==========================================================================
+   FOCUS MODE UPDATES (Refined)
+   ========================================================================== */
+
+/* 1. Base State: Dim EVERYTHING that isn't connected or edited */
+body.patch-focus-mode .component.knob-large,
+body.patch-focus-mode .component.knob-medium,
+body.patch-focus-mode .component.knob-small,
+body.patch-focus-mode .component.switch-2way,
+body.patch-focus-mode .component.switch-3way,
+body.patch-focus-mode .component.button,
+body.patch-focus-mode .component.led {
+    opacity: 0.5 !important;
+    /* Dim unedited controls */
+    transition: opacity 0.3s ease;
+    filter: grayscale(100%);
+}
+
+/* 2. Highlight Edited Controls */
+body.patch-focus-mode .component.focus-edited {
+    opacity: 1.0 !important;
+    filter: none !important;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)) !important;
+}
+
+/* 3. Highlight Connected Jacks (Existing rule refinement) */
+body.patch-focus-mode .component.jack.focus-connected {
+    opacity: 1.0 !important;
+    filter: none !important;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+/* 4. Kill the Red Glow on Inactive Buttons in Focus Mode */
+body.patch-focus-mode body.dark-mode #button-1:not([data-state="1"]),
+body.patch-focus-mode body.dark-mode #button-2:not([data-state="1"]),
+body.patch-focus-mode body.dark-mode #button-3:not([data-state="1"]),
+body.patch-focus-mode body.dark-mode #button-4:not([data-state="1"]) {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    opacity: 0.05 !important;
+}
+
+/* 5. Keep Note Elements Visible */
+body.patch-focus-mode .note-element {
+    opacity: 1.0 !important;
+    /* Notes are always manually added, so assuming relevant */
+}
+
+/* Fix Square Jacks in Focus Mode */
+body.patch-focus-mode .component.jack.focus-connected {
+    opacity: 1.0 !important;
+    filter: none !important;
+    box-shadow: none !important;
+    /* Remove shadow from container */
+}
+
+/* Apply shadow to the inner circle instead */
+body.patch-focus-mode .component.jack.focus-connected::before {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8) !important;
+    opacity: 1.0 !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ==========================================================================
+   LABEL & NOTE VISIBILITY
+   ========================================================================== */
+
+/* Default: Hide Notes */
+.note-element {
+    display: none !important;
+}
+
+/* Show Notes when 'show-labels' class is active on body */
+body.show-labels .note-element {
+    display: block !important;
+}
+
+/* Also ensure card labels respect the logic if they are handled by JS manually, 
+   but this CSS helper allows for pure CSS toggling if needed later. 
+   Currently JS handles .card-label availability. */
+/* ==========================================================================
+   DECLUTTER MODE
+   ========================================================================== */
+
+/* Toggle Button Active State */
+#declutterToggle.btn-active {
+    background-color: var(--color-active) !important;
+    color: var(--page-bg) !important;
+}
+
+/* Optional: Slight transparency for declutter mode cables */
+body.declutter-mode .cable-svg path {
+    opacity: 0.8;
 }

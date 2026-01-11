@@ -93,6 +93,228 @@ class VCOProcessor extends AudioWorkletProcessor {
 registerProcessor('vco-processor', VCOProcessor);
 `;
 
+const benjolinWorkletCode = `
+class BenjolinProcessor extends AudioWorkletProcessor {
+    static get parameterDescriptors() {
+        return [
+            { name: 'knobMain', defaultValue: 0.5, minValue: 0, maxValue: 1 },
+            { name: 'knobX', defaultValue: 0.5, minValue: 0, maxValue: 1 },
+            { name: 'knobY', defaultValue: 0.5, minValue: 0, maxValue: 1 },
+            { name: 'switchState', defaultValue: 1, minValue: 0, maxValue: 2 } // 0=Loop, 1=Run, 2=Write
+        ];
+    }
+
+    constructor() {
+        super();
+        this.SHIFT_REG_SIZE = 6;
+        this.bits = new Int32Array(this.SHIFT_REG_SIZE); 
+        this.bits.fill(0);
+        
+        // Clock triggers
+        this.lastFwd = 0;
+        this.lastBack = 0;
+        
+        // S&H
+        this.s_vca = 0;
+        this.s_offset = 2048;
+        
+        // LED Sync 
+        this.ledCounter = 0;
+    }
+
+    process(inputs, outputs, parameters) {
+        // Inputs: 0:ClkFwd, 1:ClkBack, 2:Data, 3:Prob, 4:OffCV, 5:VCACV
+        const clkFwd = inputs[0][0] || new Float32Array(128);
+        const clkBack = inputs[1][0] || new Float32Array(128);
+        const dataIn = inputs[2][0] || new Float32Array(128);
+        const probMod = inputs[3][0] || new Float32Array(128);
+        const offCv = inputs[4][0] || new Float32Array(128);
+        const vcaCv = inputs[5][0] || new Float32Array(128);
+
+        // Parameters
+        const kMain = parameters.knobMain.length > 1 ? parameters.knobMain : [parameters.knobMain[0]];
+        const kX = parameters.knobX.length > 1 ? parameters.knobX : [parameters.knobX[0]];
+        const kY = parameters.knobY.length > 1 ? parameters.knobY : [parameters.knobY[0]];
+        const swState = parameters.switchState.length > 1 ? parameters.switchState : [parameters.switchState[0]];
+
+        // Outputs
+        // 0:R1, 1:R2, 2:CV1, 3:CV2, 4:P1, 5:P2
+        const outR1 = outputs[0][0];
+        const outR2 = outputs[1][0];
+        const outCV1 = outputs[2][0];
+        const outCV2 = outputs[3][0];
+        const outPulse1 = outputs[4][0];
+        const outPulse2 = outputs[5][0];
+
+        // Process Loop
+        for (let i = 0; i < 128; i++) {
+            // 1. Clock Detection
+            let triggerFwd = false;
+            let triggerBack = false;
+            const THRESHOLD = 0.1; // Sensitive 
+            const LOW = 0.05;
+
+            const fwdSample = clkFwd[i];
+            if (fwdSample > THRESHOLD && this.lastFwd <= THRESHOLD) triggerFwd = true;
+            this.lastFwd = fwdSample;
+            
+            const backSample = clkBack[i];
+            if (backSample > THRESHOLD && this.lastBack <= THRESHOLD) triggerBack = true;
+            this.lastBack = backSample;
+
+            // 2. State & Rotation
+            const sw = Math.round(swState.length > 1 ? swState[i] : swState[0]);
+            const mkMain = kMain.length > 1 ? kMain[i] : kMain[0];
+            const mkX = kX.length > 1 ? kX[i] : kX[0];
+            const mkY = kY.length > 1 ? kY[i] : kY[0];
+            
+            // S&H sampling logic moved to trigger events?
+            // Actually original code sampled on trigger.
+            // Let's calculate params per sample though.
+
+            // Calc Probability 0..4095
+            let paramP = mkMain * 4095;
+            let modP = probMod[i] * 2048; 
+            let turingP = paramP + modP;
+            if (turingP < 0) turingP = 0;
+            if (turingP > 4095) turingP = 4095;
+            
+            let illusion = false;
+            if (turingP < 15) { turingP = 0; illusion = true; }
+            else if (turingP > 4080) turingP = 4095;
+
+            // Rotate Logic
+            if (triggerFwd) {
+                // Right Rotate
+                const last = this.bits[5];
+                for (let k = 5; k > 0; k--) this.bits[k] = this.bits[k-1];
+                this.bits[0] = last;
+                
+                // Logic
+                if (sw === 2) { // Write
+                    this.bits[0] = 0x3;
+                } else if (sw === 0 || illusion) { // Loop
+                    this.bits[0] = (~this.bits[0]) & 0x3;
+                } else { // Run
+                    let dVal = 0;
+                    // Logic: if dataIn is active use it, else rand.
+                    // Simple check: abs input > 0.01
+                    if (Math.abs(dataIn[i]) < 0.01) {
+                         dVal = Math.floor(Math.random() * 4096);
+                    } else {
+                         // Map -1..1 -> 0..4096
+                         dVal = Math.floor(dataIn[i] * 2048 + 2048);
+                    }
+                    if (dVal > turingP) this.bits[0] = (~dVal) & 0x3;
+                }
+            }
+            
+            if (triggerBack) {
+                // Left Rotate
+                const first = this.bits[0];
+                for (let k = 0; k < 5; k++) this.bits[k] = this.bits[k+1];
+                this.bits[5] = first;
+                
+                // Logic
+                 if (sw === 2) { // Write
+                    this.bits[5] = 0x0;
+                } else if (sw === 0 || illusion) { // Loop
+                    this.bits[5] = (~this.bits[5]) & 0x3;
+                } else { // Run
+                    let dVal = 0;
+                    if (Math.abs(dataIn[i]) < 0.01) {
+                         dVal = Math.floor(Math.random() * 4096);
+                    } else {
+                         dVal = Math.floor(dataIn[i] * 2048 + 2048);
+                    }
+                    if (dVal > 4094) dVal = 4094;
+                    if (dVal < 1) dVal = 1;
+                    if (dVal > turingP) this.bits[5] = (~dVal) & 0x3;
+                }
+            }
+            
+            // Continuous Controls (Offset & VCA)
+            // C++: calcOffset() and calcVCA() run every sample.
+            this.updateControls(mkX, mkY, offCv[i], vcaCv[i]);
+
+            // 3. Compute Outputs
+            let r1 = 0; 
+            for (let k=0; k<3; k++) r1 |= ((this.bits[k] << (2*k)) & 0x3F);
+            let r2 = 0;
+            for (let k=0; k<3; k++) r2 |= ((this.bits[k+3] << (2*k)) & 0x3F);
+            
+            r1 = r1 << 6; r2 = r2 << 6; // 12 bit
+            
+            // S&H Mod (Actually continuous VCA/Offset)
+            r1 = r1 * this.s_vca; r2 = r2 * this.s_vca;
+            r1 += this.s_offset; r2 += this.s_offset;
+            
+            r1 -= 2048; r2 -= 2048;
+            r1 *= -1; r2 *= -1;
+            
+            // Clip
+            if (r1 > 2047) r1 = 2047; if (r1 < -2048) r1 = -2048;
+            if (r2 > 2047) r2 = 2047; if (r2 < -2048) r2 = -2048;
+            
+            const q1 = r1; const q2 = r2;
+            const norm = (v) => (v / 2048.0) * 0.5;
+            
+            if (outR1) outR1[i] = norm(r1);
+            if (outR2) outR2[i] = norm(r2);
+            
+            // Quantize CV
+            const step = 34.13;
+            const cv1 = Math.round(q1 / step) * step;
+            const cv2 = Math.round(q2 / step) * step;
+            
+            if (outCV1) outCV1[i] = norm(cv1);
+            if (outCV2) outCV2[i] = norm(cv2);
+            
+            // Pulses
+            const p1 = this.bits[2] & 0x1; 
+            const p2 = this.bits[5] & 0x1;
+            if (outPulse1) outPulse1[i] = p1; 
+            if (outPulse2) outPulse2[i] = p2;
+        } // End loop
+        
+        // LED Update (Downsample)
+        this.ledCounter++;
+        if (this.ledCounter > 16) { 
+            this.port.postMessage({ bits: Array.from(this.bits) });
+            this.ledCounter = 0;
+        }
+
+        return true;
+    }
+    
+    updateControls(kx, ky, offCv, vcaCv) {
+        // VCA (Unipolar VCA)
+        let vcaVal = ky;
+        if (Math.abs(vcaCv) > 0.01) {
+            let cv = (vcaCv + 1) / 2;
+            vcaVal = cv * ky;
+        }
+        this.s_vca = vcaVal;
+
+        // Offset (Bipolar Attenuverter)
+        let offVal = kx * 4096;
+        if (Math.abs(offCv) > 0.01) {
+             // C++: offset = CV * (Knob - 2048) >> 12; offset += 2048;
+             // offCv in JS is -1..1. C++ CV is -2048..2048 approx.
+             // Knob term (kx*4096 - 2048) is -2048..2048.
+             // Mult Result should be +/- 1024 approx range (since >> 12 divides by 4096).
+             // Math: (offCv * 2048) * (knobBip) / 4096
+             
+             let knobBip = kx * 4096 - 2048; 
+             offVal = (offCv * 2048) * knobBip / 4096;
+             offVal += 2048;
+        }
+        this.s_offset = offVal;
+    }
+}
+registerProcessor('benjolin-processor', BenjolinProcessor);
+`;
+
 
 // --- SLOPES WORKLET ---
 const slopesWorkletCode = `
@@ -1541,13 +1763,18 @@ function buildAudioGraph() {
         const blobSeq = new Blob([sequencerWorkletCode], { type: 'application/javascript' });
         const urlSeq = URL.createObjectURL(blobSeq);
 
+        // 7. Benjolin
+        const blobBenj = new Blob([benjolinWorkletCode], { type: 'application/javascript' });
+        const urlBenj = URL.createObjectURL(blobBenj);
+
         Promise.all([
             audioCtx.audioWorklet.addModule(urlSlopes),
             audioCtx.audioWorklet.addModule(urlRec),
             audioCtx.audioWorklet.addModule(urlTwists),
             audioCtx.audioWorklet.addModule(urlVco),
             audioCtx.audioWorklet.addModule(urlHump),
-            audioCtx.audioWorklet.addModule(urlSeq)
+            audioCtx.audioWorklet.addModule(urlSeq),
+            audioCtx.audioWorklet.addModule(urlBenj)
         ]).then(() => {
             audioNodes['workletLoaded'] = true;
             finishBuild();

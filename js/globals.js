@@ -375,7 +375,7 @@ let activePedalChain = ['reverb', 'delay', 'chorus', 'phaser', 'dist'];
 let isRandomColorMode = true;
 let selectedCableColor = '#ef4444';
 let lastRandomColorIndex = -1;
-let showComponentLabels = true;
+let showComponentLabels = false;
 
 const PNG_KEYWORD = "MTM_PATCH_DATA";
 const MAX_HISTORY = 50;

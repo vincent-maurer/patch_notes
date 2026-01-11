@@ -157,5 +157,9 @@ window.addEventListener('load', () => {
 });
 
 // Attach Global Input Listeners
+// Attach Global Input Listeners
+window.addEventListener('beforeprint', () => {
+    if (typeof injectPrintStyles === 'function') injectPrintStyles();
+});
 document.addEventListener('keydown', handleUndoRedo);
 document.addEventListener('keydown', handleEscapeSequence);
