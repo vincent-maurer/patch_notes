@@ -558,9 +558,27 @@ const CARD_LIBRARY = [
         id: 'toolbox',
         name: 'Toolbox',
         num: '99',
-        desc: "Mixer, VCA, noise, S&H, clock generator, etc.",
-        class: 'CardNoOp',
-        category: 'Utility'
+        desc: "Mixer, VCA, Noise, S&H, Clock.\nKnob Main/X: Mix/VCA Amt\nKnob Y: Clock Rate/Probability\nSwitch Down: Change Noise Type",
+        class: 'CardToolbox',
+        category: 'Utility',
+        labels: {
+            'knob-large-computer': 'M',
+            'knob-small-x': 'Tempo',
+            'knob-small-y': 'VCA',
+            'switch-3way-computer': 'Mode',
+            'jack-audio1in': 'A',
+            'jack-audio2in': 'B',
+            'jack-cv1in': 'C',
+            'jack-cv2in': 'D',
+            'jack-pulse1in': 'Clk',
+            'jack-pulse2in': 'AND',
+            'jack-audio1out': 'Mix',
+            'jack-audio2out': 'Noise',
+            'jack-cv1out': 'C x D',
+            'jack-cv2out': 'S&H',
+            'jack-pulse1out': 'Clk',
+            'jack-pulse2out': 'Skipped'
+        }
     },
     {
         id: 'none',

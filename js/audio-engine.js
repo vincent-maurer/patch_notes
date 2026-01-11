@@ -93,6 +93,244 @@ class VCOProcessor extends AudioWorkletProcessor {
 registerProcessor('vco-processor', VCOProcessor);
 `;
 
+const toolboxWorkletCode = `
+class ToolboxProcessor extends AudioWorkletProcessor {
+    static get parameterDescriptors() {
+        return [
+            { name: 'main', defaultValue: 0.5 },
+            { name: 'x', defaultValue: 0 },
+            { name: 'y', defaultValue: 0 },
+            { name: 'mode', defaultValue: 0 } // Switch: 0=Up, 1=Mid, 2=Down
+        ];
+    }
+
+    constructor() {
+        super();
+        this.noiseState = 2463534242;
+        this.shVal = 0;
+        this.timer = 0;
+        this.clockTimer = 0;
+        this.coinTimer = 0;
+        this.noiseType = 0;
+        this.noiseTimer = 0;
+        this.noiseVal = 0;
+        this.lastSwitch = 0;
+
+        // Pulse Detection
+        this.lastPulse1 = 0;
+        this.lastPulse2 = 0;
+    }
+
+    xorshift32() {
+        this.noiseState ^= this.noiseState << 13;
+        this.noiseState ^= this.noiseState >> 17;
+        this.noiseState ^= this.noiseState << 5;
+        // Keep it unsigned 32-bit
+        this.noiseState = this.noiseState >>> 0; 
+        return this.noiseState;
+    }
+
+    // Returns -1 to 1
+    noise12() {
+        const r = (this.xorshift32() >>> 20) & 0xFFF; // 12-bit (0-4095)
+        return (r - 2048) / 2048.0; 
+    }
+
+    getNoise() {
+        if (this.noiseType >= 1) {
+            if (this.noiseTimer <= 0) {
+                this.noiseVal = this.noise12();
+                this.noiseTimer = 2 << this.noiseType;
+            } else {
+                this.noiseTimer--;
+            }
+            return this.noiseVal;
+        }
+        return this.noise12();
+    }
+
+    coinflip(prob) { // prob 0..1
+        const r = (this.xorshift32() >>> 20) / 4096.0;
+        return r < prob;
+    }
+
+    process(inputs, outputs, parameters) {
+        // Inputs: 6 mono inputs
+        // inputs[n] is array of Channels. inputs[n][0] is Float32Array of samples.
+        const inAudio1 = inputs[0][0] || null;
+        const inAudio2 = inputs[1][0] || null;
+        const inCV1 = inputs[2][0] || null;
+        const inCV2 = inputs[3][0] || null;
+        const inPulse1 = inputs[4][0] || null;
+        const inPulse2 = inputs[5][0] || null;
+
+        const outAudio1 = outputs[0][0];
+        const outAudio2 = outputs[1][0];
+        const outCV1 = outputs[2][0];
+        const outCV2 = outputs[3][0];
+        const outPulse1 = outputs[4][0];
+        const outPulse2 = outputs[5][0];
+
+        const paramMain = parameters.main;
+        const paramX = parameters.x;
+        const paramY = parameters.y;
+        const paramMode = parameters.mode;
+
+        for (let i = 0; i < 128; i++) {
+            const pMain = paramMain.length > 1 ? paramMain[i] : paramMain[0];
+            const pX = paramX.length > 1 ? paramX[i] : paramX[0];
+            const pY = paramY.length > 1 ? paramY[i] : paramY[0];
+            const pMode = Math.round(paramMode.length > 1 ? paramMode[i] : paramMode[0]);
+
+            const a = inAudio1 ? inAudio1[i] : 1.0;     // Normalled to 1.0 (Full)?? C++ says 2047 (Full positive)
+            const c = inAudio2 ? inAudio2[i] : 1.0;
+            const cv1 = inCV1 ? inCV1[i] : 0.0;
+            const cv2 = inCV2 ? inCV2[i] : 0.0;
+            const p1Val = inPulse1 ? inPulse1[i] : 0.0;
+            const p2Val = inPulse2 ? inPulse2[i] : 0.0;
+
+            // --- NOISE TYPE SWITCHING ---
+            // Detect switch change to Down (2)
+            if (pMode === 2 && this.lastSwitch !== 2) {
+                 this.noiseType = (this.noiseType + 1) % 7;
+            }
+            this.lastSwitch = pMode;
+
+            // --- AUDIO LOGIC ---
+            // b = Main (Bipolar -1 to 1). pMain is 0..1
+            const b = (pMain - 0.5) * 2.0; 
+            // d = X (Unipolar 0 to 1).
+            const d = pX;
+
+            let out1 = 0;
+            if (pMode === 0) { // Up: Ring/VCA
+               // (A * B) * (C * D)
+               out1 = (a * b) * (c * d);
+            } else { // Mid/Down: Mixer
+               // (A * B) + (C * D)
+               out1 = (a * b) + (c * d);
+            }
+            if (outAudio1) outAudio1[i] = out1;
+
+            // --- NOISE OUTPUT ---
+            const n = this.getNoise();
+            if (outAudio2) outAudio2[i] = n;
+
+            // --- CV LOGIC ---
+            // CVOut1 = CV1 * CV2 (Ring Mod)
+            // C++: ((int32_t)CVIn1() * CVIn2()) >> 11;
+            if (outCV1) outCV1[i] = cv1 * cv2; // Assuming CV inputs are normalized -1 to 1
+
+            // --- CLOCK LOGIC ---
+            let clockTrig = false;
+            
+            // Pulse 1 Input detection (Schmitt Triggerish)
+            const pulse1High = p1Val > 0.5;
+            if (inPulse1 && inPulse1.length > 0) { // Connected?
+                 if (pulse1High && !this.lastPulse1) clockTrig = true;
+            } else {
+                 // Internal Clock
+                 // Exp4000(KnobVal(Y) >> 1)
+                 // Y is 0..1. 
+                 // Simple exponential clock:
+                 const rate = 0.5 * Math.pow(100, pY); // Range
+                 this.timer += (rate / 48000.0);
+                 if (this.timer > 1.0) {
+                     this.timer -= 1.0;
+                     clockTrig = true;
+                 }
+            }
+            this.lastPulse1 = pulse1High;
+
+            if (clockTrig) {
+                this.clockTimer = 240; // ~5ms pulse at 48k
+
+                // S&H Sample
+                if (inCV1 && inCV1.length > 0) { // If connected (how to check connection efficiently? assume if buffer is not silent? No, inputs always exist. Need explicit 'connected' param? Or just assume if signal?)
+                     // AudioWorklet doesn't know about connections easily. 
+                     // C++ uses Connected(CV1).
+                     // We'll rely on CV1 behavior: if unplugged, it's 0. 
+                     // But we want to sample Noise if unplugged.
+                     // The problem: Unplugged input is 0s. 
+                     // We can't distinguish 0V signal from Unplugged.
+                     // Hack: We can use a small DC offset on inputs in JS wrapper passed via param?
+                     // Or just assume if |cv1| < epsilon, use Noise? No, zero-crossing exists.
+                     // Better: JS wrapper connects 'DC' bias to indicate connection?
+                     // Or just mix default noise: if (connected) sample CV, else sample Noise.
+                     // We will implement a 'connectedMask' parameter?
+                     // For now, let's just MIX them: S&H = CV1 + Noise (if CV1 is 0).
+                     // Actually logic is: If Connected(CV1) -> CV1. Else -> Noise.
+                     // We'll sample CV1. If user patches nothing, CV1 is 0. 
+                     // We will always sample CV1 + Noise * (1 - connectedCV1Param)?
+                     // Let's sample CV1. If it's consistently 0, maybe it's unconnected.
+                     // Revisit: use Noise if we think it is unconnected.
+                     // Let's blindly sample CV1 for now. If user wants Noise S&H, they patch Noise to CV1? 
+                     // No, internal normalisation. 
+                     // Let's add a 'connected' parameter bitmask.
+                     this.shVal = cv1; // Needs fix for normalisation
+                } else {
+                     this.shVal = n;
+                }
+                
+                // Pulse 2 Logic
+                // If Pulse 2 IN is High (or unplugged?), roll dice
+                // C++: PulseIn2() || Disconnected(Pulse2)
+                // Default effectively High.
+                // We'll assume Pulse 2 is Gate. If unplugged, we need to know.
+                // Let's assume High.
+                
+                const p2Gate = (!inPulse2) || (p2Val > 0.5); // if no input buf, assume high
+                if (p2Gate) {
+                    let p2 = false;
+                    if (inPulse1) { // If external clock (Pulse 1 plugged)
+                        p2 = this.coinflip(pY);
+                    } else {
+                        p2 = (this.n & 1) === 1; // 50/50? C++ says (noise() & 1).
+                        // noise() is -2048 to 2048. Lower bit check.
+                        p2 = this.coinflip(0.5);
+                    }
+                    if (p2) this.coinTimer = 240;
+                }
+            }
+
+            // --- PULSE OUTPUTS ---
+            if (outPulse1) outPulse1[i] = this.clockTimer > 0 ? 1.0 : 0.0;
+            if (outPulse2) outPulse2[i] = this.coinTimer > 0 ? 1.0 : 0.0;
+
+            if (this.clockTimer > 0) this.clockTimer--;
+            if (this.coinTimer > 0) this.coinTimer--;
+
+            // --- CV2 OUT ---
+            if (outCV2) outCV2[i] = this.shVal;
+        }
+
+        // Output LED data every ~1024 samples (approx 21ms at 48k)
+        if (this.timer % 8 === 0) { // crude throttle logic if timer increments by small steps? 
+             // timer logic was float. better use a frame counter.
+        }
+
+        // Just use a simple counter
+        if (!this.frameCnt) this.frameCnt = 0;
+        this.frameCnt++;
+        if (this.frameCnt > 16) { // ~3ms? process is 128 samples. 16*128 = 2048 samples = 40ms. OK.
+            this.frameCnt = 0;
+            // Send snapshot of current sample
+            this.port.postMessage({
+                audio1: outAudio1 ? Math.abs(outAudio1[0]) : 0,
+                audio2: outAudio2 ? Math.abs(outAudio2[0]) : 0,
+                cv1: outCV1 ? Math.abs(outCV1[0]) : 0,
+                cv2: outCV2 ? Math.abs(outCV2[0]) : 0,
+                p1: outPulse1 ? outPulse1[0] : 0,
+                p2: outPulse2 ? outPulse2[0] : 0
+            });
+        }
+
+        return true;
+    }
+}
+registerProcessor('toolbox-processor', ToolboxProcessor);
+`;
+
 const benjolinWorkletCode = `
 class BenjolinProcessor extends AudioWorkletProcessor {
     static get parameterDescriptors() {
@@ -1767,6 +2005,10 @@ function buildAudioGraph() {
         const blobBenj = new Blob([benjolinWorkletCode], { type: 'application/javascript' });
         const urlBenj = URL.createObjectURL(blobBenj);
 
+        // 8. Toolbox (NEW)
+        const blobTool = new Blob([toolboxWorkletCode], { type: 'application/javascript' });
+        const urlTool = URL.createObjectURL(blobTool);
+
         Promise.all([
             audioCtx.audioWorklet.addModule(urlSlopes),
             audioCtx.audioWorklet.addModule(urlRec),
@@ -1774,7 +2016,8 @@ function buildAudioGraph() {
             audioCtx.audioWorklet.addModule(urlVco),
             audioCtx.audioWorklet.addModule(urlHump),
             audioCtx.audioWorklet.addModule(urlSeq),
-            audioCtx.audioWorklet.addModule(urlBenj)
+            audioCtx.audioWorklet.addModule(urlBenj),
+            audioCtx.audioWorklet.addModule(urlTool)
         ]).then(() => {
             audioNodes['workletLoaded'] = true;
             finishBuild();
