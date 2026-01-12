@@ -3868,7 +3868,7 @@ function initExternalGearUI() {
                     set('VCA', 2, 1, 2);
                     break;
                 case 'midi':
-                    set('MIDI Interface', 0, 4, 0);
+                    set('MIDI Interface', 4, 4, 2);
                     break;
                 case 'mixer':
                     set('Mixer', 3, 1, 3);
@@ -3925,10 +3925,16 @@ function initExternalGearUI() {
             knobLabels[`_knob_0`] = "Gain";
             knobLabels[`_knob_1`] = "CV Amt";
         } else if (type === 'midi') {
+            jackLabels[`_in_0`] = "Gate";
+            jackLabels[`_in_1`] = "Pitch";
+            jackLabels[`_in_2`] = "CC A";
+            jackLabels[`_in_3`] = "CC B";
             jackLabels[`_out_0`] = "Pitch";
             jackLabels[`_out_1`] = "Gate";
             jackLabels[`_out_2`] = "Vel";
             jackLabels[`_out_3`] = "Clock";
+            knobLabels[`_knob_0`] = "CC A #";
+            knobLabels[`_knob_1`] = "CC B #";
         } else if (type === 'mixer') {
             jackLabels[`_in_0`] = "In 1";
             jackLabels[`_in_1`] = "In 2";
@@ -5020,3 +5026,122 @@ window.updateKnobFromMidi = function (id, normValue) {
         if (typeof updateAudioParams === 'function') updateAudioParams();
     }
 };
+
+/* =========================================================================
+   MIDI SETTINGS UI
+   ========================================================================= */
+
+function initMidiSettingsUI() {
+    // 1. Create Modal
+    if (!document.getElementById('midiSettingsModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'midiSettingsModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal" style="width: 400px;">
+                <div class="modal-header">
+                    <h2>MIDI Output Settings</h2>
+                    <button class="modal-close" id="closeMidiSettings">×</button>
+                </div>
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                    
+                    <!-- Output Device Selection -->
+                    <div class="form-group">
+                        <label style="color: #aaa; font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block;">OUTPUT DEVICE</label>
+                        <select id="midiOutputDeviceSelector" style="width: 100%; padding: 8px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                            <option value="">All Available Devices</option>
+                        </select>
+                    </div>
+
+                    <!-- Output Channel Selection -->
+                    <div class="form-group">
+                        <label style="color: #aaa; font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block;">OUTPUT CHANNEL</label>
+                        <select id="midiOutputChannelSelector" style="width: 100%; padding: 8px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                            <option value="0">Omni (All Channels)</option>
+                            ${Array.from({ length: 16 }, (_, i) => `<option value="${i + 1}">Channel ${i + 1}</option>`).join('')}
+                        </select>
+                    </div>
+
+                </div>
+                <div class="modal-footer" style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                    <button id="saveMidiSettingsBtn" class="btn btn-primary">Save & Close</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Listeners
+        document.getElementById('closeMidiSettings').onclick = () => modal.classList.remove('visible');
+        document.getElementById('saveMidiSettingsBtn').onclick = saveMidiSettings;
+    }
+
+    // 2. Add Toolbar Button (if not exists)
+    if (!document.getElementById('midiSettingsBtn')) {
+        const midiToggle = document.getElementById('midiToggle');
+        if (midiToggle && midiToggle.parentElement) {
+            const btn = document.createElement('button');
+            btn.id = 'midiSettingsBtn';
+            btn.className = 'btn btn-icon';
+            btn.innerHTML = '⚙'; // Gear Icon
+            btn.title = "MIDI Settings";
+            btn.style.marginLeft = '-1px'; // Group effect
+            btn.onclick = openMidiSettings;
+
+            // Insert after midiToggle
+            midiToggle.parentElement.insertBefore(btn, midiToggle.nextSibling);
+
+            // Fix styling group
+            midiToggle.classList.remove('btn-group-last');
+            btn.classList.add('btn-group-last');
+        }
+    }
+}
+
+function openMidiSettings() {
+    const modal = document.getElementById('midiSettingsModal');
+    const deviceSel = document.getElementById('midiOutputDeviceSelector');
+    const chanSel = document.getElementById('midiOutputChannelSelector');
+
+    if (!modal) return;
+
+    // Populate Devices
+    deviceSel.innerHTML = '<option value="">All Available Devices</option>';
+    if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess().then(access => {
+            access.outputs.forEach(output => {
+                const opt = document.createElement('option');
+                opt.value = output.id;
+                opt.textContent = output.name;
+                deviceSel.appendChild(opt);
+            });
+
+            // Set Current Values (from audio-engine globals)
+            if (typeof midiOutputDeviceId !== 'undefined') deviceSel.value = midiOutputDeviceId || "";
+            if (typeof midiOutputChannel !== 'undefined') chanSel.value = midiOutputChannel || "0";
+
+            modal.classList.add('visible');
+        });
+    } else {
+        showMessage("Web MIDI not supported", "error");
+    }
+}
+
+function saveMidiSettings() {
+    const deviceId = document.getElementById('midiOutputDeviceSelector').value;
+    const channel = parseInt(document.getElementById('midiOutputChannelSelector').value);
+
+    // Update Globals in audio-engine.js
+    if (typeof updateMidiGlobals === 'function') {
+        updateMidiGlobals(deviceId, channel);
+    } else {
+        // Fallback if function not ready
+        window.midiOutputDeviceId = deviceId || null;
+        window.midiOutputChannel = channel;
+    }
+
+    document.getElementById('midiSettingsModal').classList.remove('visible');
+    showMessage(`MIDI Output: ${deviceId ? "Specific Device" : "All Devices"}, Ch: ${channel === 0 ? "Omni" : channel}`, "success");
+}
+
+// Init on Load
+window.addEventListener('load', initMidiSettingsUI);

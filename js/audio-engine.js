@@ -1252,10 +1252,49 @@ function onMIDISuccess(access) {
 
     midiAccess.onstatechange = (e) => {
         if (e.port.type === 'input') onMIDISuccess(midiAccess);
+        // Also refresh outputs if needed, but they are pulled dynamically in sendMidiMessage
     };
 
     midiBtn.classList.add('btn-active-blue');
     midiEnabled = true;
+
+    // Log Outputs
+    const outputs = midiAccess.outputs.values();
+    let outCount = 0;
+    for (let output of outputs) { outCount++; }
+    if (outCount > 0) console.log(`MIDI: ${outCount} Output(s) detected.`);
+}
+
+
+// MIDI Settings Globals
+let midiOutputDeviceId = null; // null = All
+let midiOutputChannel = 0;     // 0 = Omni/Keep Original
+
+window.updateMidiGlobals = function (deviceId, channel) {
+    midiOutputDeviceId = deviceId === "" ? null : deviceId;
+    midiOutputChannel = parseInt(channel) || 0;
+};
+
+function sendMidiMessage(status, data1, data2) {
+    if (!midiAccess || !midiEnabled) return;
+
+    // Filter by Device ID
+    const outputs = midiAccess.outputs.values();
+    for (let output of outputs) {
+        if (midiOutputDeviceId && output.id !== midiOutputDeviceId) continue;
+
+        // Message Clone to modify channel
+        let newStatus = status;
+
+        // Override Channel if not Omni (0) and message is Channel Voice Message (0x80 - 0xEF)
+        if (midiOutputChannel > 0 && status >= 128 && status <= 239) {
+            // Keep upper nibble (Command), set lower nibble (Channel 0-15)
+            newStatus = (status & 0xF0) | (midiOutputChannel - 1);
+        }
+
+        const message = [newStatus, data1, data2];
+        output.send(message);
+    }
 }
 
 function onMIDIFailure(e) {
@@ -1278,6 +1317,8 @@ function onMIDIMessage(message) {
 }
 
 
+
+const vkKeyCache = new Map();
 
 function handleMidiMessage(message, isInternal = false) {
     if (!isInternal && !midiEnabled) return;
@@ -1311,9 +1352,10 @@ function handleMidiMessage(message, isInternal = false) {
     }
 
     // --- 2. NOTE ON / OFF ---
-    // --- 2. NOTE ON / OFF ---
-    // --- 2. NOTE ON / OFF ---
-    if (command === 144 && data2 > 0) { // Note On
+    const isNoteOn = command === 144 && data2 > 0;
+    const isNoteOff = command === 128 || (command === 144 && data2 === 0);
+
+    if (isNoteOn) {
         const note = data1;
         const velocity = data2;
         const cv = (note - 60) / 60.0;
@@ -1327,12 +1369,18 @@ function handleMidiMessage(message, isInternal = false) {
         const velNorm = velocity / 127.0;
         safeParam(audioNodes['Midi_Velocity'].offset, velNorm, audioCtx.currentTime);
 
-        // Virtual Keyboard Feedback
-        const key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+        // Virtual Keyboard Feedback (Cached) - DISABLED FOR PERFORMANCE
+        /*
+        let key = vkKeyCache.get(note);
+        if (!key) {
+            key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+            if (key) vkKeyCache.set(note, key);
+        }
         if (key) key.classList.add('active');
+        */
     }
 
-    else if (command === 128 || (command === 144 && data2 === 0)) { // Note Off
+    else if (isNoteOff) {
         const note = data1;
         midiHeldNotes.delete(note);
 
@@ -1341,16 +1389,22 @@ function handleMidiMessage(message, isInternal = false) {
             safeParam(audioNodes['Midi_Gate'].offset, 0.0, audioCtx.currentTime);
         }
 
-        // Virtual Keyboard Feedback
-        const key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+        // Virtual Keyboard Feedback (Cached) - DISABLED FOR PERFORMANCE
+        /*
+        let key = vkKeyCache.get(note);
+        if (!key) {
+             key = document.querySelector(`.vk-key-white[data-note="${note}"], .vk-key-black[data-note="${note}"]`);
+             if (key) vkKeyCache.set(note, key);
+        }
         if (key) key.classList.remove('active');
+        */
     }
 
     // --- 3. CONTROL CHANGE (CC) & LEARN ---
     else if (command === 176) {
         const cc = data1;
         const val = data2;
-        console.log(`MIDI CC: Ch${channel} Num${cc} Val${val}. LearnMode: ${midiLearnMode}, Target: ${pendingLearnTarget}`);
+        // console.log(`MIDI CC: Ch${channel} Num${cc} Val${val}`); // Removed Log for performance
         const mapKey = `${channel}_${cc}`;
 
         // A. Handle LEARN Mode
@@ -1359,13 +1413,12 @@ function handleMidiMessage(message, isInternal = false) {
 
             showMessage(`Mapped CC ${cc} (Ch ${channel + 1}) to ${pendingLearnTarget}`, "success");
 
-            // Visual feedback cleanup would go here or be handled by UI
+            // Visual feedback cleanup
             const el = document.getElementById(pendingLearnTarget);
             if (el) el.classList.remove('learn-active');
 
             pendingLearnTarget = null;
-            disableMidiLearnMode(); // Auto-exit learn mode after one mapping? Or keep open? 
-            // Let's keep it simple: Auto-exit for now to prevent accidental overwrites
+            disableMidiLearnMode();
             return;
         }
 
@@ -1806,17 +1859,52 @@ function createCustomModuleNode(module) {
         };
     }
     else if (type === 'midi') {
-        // Access global MIDI nodes if valid
+        // Inputs
+        const gateIn = audioCtx.createGain();
+        const cvIn = audioCtx.createGain();
+        const ccAIn = audioCtx.createGain();
+        const ccBIn = audioCtx.createGain();
+
+        // Analysers
+        const gateOutAnalyser = audioCtx.createAnalyser();
+        gateOutAnalyser.fftSize = 32;
+        gateIn.connect(gateOutAnalyser);
+
+        const cvOutAnalyser = audioCtx.createAnalyser();
+        cvOutAnalyser.fftSize = 32;
+        cvIn.connect(cvOutAnalyser);
+
+        const ccAAnalyser = audioCtx.createAnalyser();
+        ccAAnalyser.fftSize = 32;
+        ccAIn.connect(ccAAnalyser);
+
+        const ccBAnalyser = audioCtx.createAnalyser();
+        ccBAnalyser.fftSize = 32;
+        ccBIn.connect(ccBAnalyser);
+
         return {
             type: 'midi',
+            inputs: [gateIn, cvIn, ccAIn, ccBIn],
+            gateAnalyser: gateOutAnalyser,
+            cvAnalyser: cvOutAnalyser,
+            ccAAnalyser: ccAAnalyser,
+            ccBAnalyser: ccBAnalyser,
+
+            gateData: new Float32Array(1),
+            cvData: new Float32Array(1),
+            lastGateState: false,
+            lastNote: 60,
+            lastCCA: 0,
+            lastCCB: 0,
+
             outputs: [
-                audioNodes['Midi_Pitch'] || null, // Pitch Node (ConstantSource)
-                audioNodes['Midi_Gate'] || null,   // Gate Node (ConstantSource)
-                audioNodes['Midi_Velocity'] || null, // Velocity
-                audioNodes['Midi_Clock'] || null  // Clock
+                audioNodes['Midi_Pitch'] || null,
+                audioNodes['Midi_Gate'] || null,
+                audioNodes['Midi_Velocity'] || null,
+                audioNodes['Midi_Clock'] || null
             ]
         };
-    } // Close midi block
+    }
 
     else if (type === 'mixer') {
         const out = audioCtx.createGain();
@@ -2878,59 +2966,85 @@ function updateAudioParams() {
                 safeParam(node.gainParam, val, now);
             }
             else if (node.type === 'vca') {
-                // Knob 0: Main Bias (0 to 1)
                 const bias = getKnobValue(`${mod.id}_knob_0`, 0, 1);
-                // Knob 1: CV Amount (0 to 1) -> Allow boosting for weak signals? Let's stick to 0-1 for now.
                 const cv = getKnobValue(`${mod.id}_knob_1`, 0, 1);
-
-                // console.log(`VCA ${mod.id}: Bias ${bias.toFixed(2)}, CV Amt ${cv.toFixed(2)}`);
-
                 safeParam(node.gainParam, bias, now);
                 safeParam(node.cvAmtParam, cv, now);
             }
             else if (node.type === 'mixer') {
-                // 3 Knobs for 3 Input Gains
-                const vol1 = getKnobValue(`${mod.id}_knob_0`, 0, 1.5); // Boost allow
+                const vol1 = getKnobValue(`${mod.id}_knob_0`, 0, 1.5);
                 const vol2 = getKnobValue(`${mod.id}_knob_1`, 0, 1.5);
                 const vol3 = getKnobValue(`${mod.id}_knob_2`, 0, 1.5);
-
                 safeParam(node.gains[0], vol1, now);
                 safeParam(node.gains[1], vol2, now);
                 safeParam(node.gains[2], vol3, now);
             }
             else if (node.type === 'noise') {
-                // Knob 0: Master Level
                 const lvl = getKnobValue(`${mod.id}_knob_0`, 0, 1.0);
-
-                // Update both output gains
                 safeParam(node.gains[0].gain, lvl, now);
                 safeParam(node.gains[1].gain, lvl, now);
             }
             else if (node.type === 'sequencer') {
-                // Knobs 0-7 map to Steps 0-7
                 for (let i = 0; i < 8; i++) {
                     const val = getKnobValue(`${mod.id}_knob_${i}`, 0, 1);
                     const paramName = `step${i}`;
                     const param = node.processor.parameters.get(paramName);
                     if (param) safeParam(param, val, now);
                 }
-
-                // Knob 8: Rate (0 to 40 Hz)
                 const rateVal = getKnobValue(`${mod.id}_knob_8`, 0, 40);
                 safeParam(node.processor.parameters.get('rate'), rateVal, now);
 
-                // Knob 9: Quantize Mode (0 to 5)
                 const quantVal = getKnobValue(`${mod.id}_knob_9`, 0, 5.1);
                 safeParam(node.processor.parameters.get('quantize'), quantVal, now);
 
-                // Check Patching: If Clock Input (`_in_0`) has ANY cable connected to it
                 const jackId = `${mod.id}_in_0`;
                 const isClockPatched = cableData.some(c => c.end === jackId || c.start === jackId);
                 const useExtVal = isClockPatched ? 1 : 0;
                 safeParam(node.processor.parameters.get('useExternal'), useExtVal, now);
             }
+            else if (node.type === 'midi') {
+                if (node.gateAnalyser && node.cvAnalyser) {
+                    node.gateAnalyser.getFloatTimeDomainData(node.gateData);
+                    const isGateHigh = node.gateData[0] > 0.5;
+
+                    if (isGateHigh && !node.lastGateState) {
+                        node.cvAnalyser.getFloatTimeDomainData(node.cvData);
+                        const cvVal = node.cvData[0];
+                        const note = Math.round(60 + (cvVal * 12));
+                        if (typeof sendMidiMessage === 'function') sendMidiMessage(144, note, 100);
+                        node.lastNote = note;
+                    }
+                    else if (!isGateHigh && node.lastGateState) {
+                        if (typeof sendMidiMessage === 'function') sendMidiMessage(128, node.lastNote, 0);
+                    }
+                    node.lastGateState = isGateHigh;
+
+                    // CC Output Logic
+                    if (node.ccAAnalyser && node.ccBAnalyser) {
+                        // CC A
+                        const ccANum = Math.round(getKnobValue(`${mod.id}_knob_0`, 0, 127)) || 1;
+                        node.ccAAnalyser.getFloatTimeDomainData(node.cvData); // reuse buffer
+                        const ccvA = Math.floor(Math.max(0, Math.min(1, node.cvData[0])) * 127);
+                        if (Math.abs(ccvA - (node.lastCCA || 0)) >= 1) {
+                            if (typeof sendMidiMessage === 'function') sendMidiMessage(176, ccANum, ccvA);
+                            node.lastCCA = ccvA;
+                        }
+
+                        // CC B
+                        const ccBNum = Math.round(getKnobValue(`${mod.id}_knob_1`, 0, 127)) || 74;
+                        node.ccBAnalyser.getFloatTimeDomainData(node.cvData);
+                        const ccvB = Math.floor(Math.max(0, Math.min(1, node.cvData[0])) * 127);
+                        if (Math.abs(ccvB - (node.lastCCB || 0)) >= 1) {
+                            if (typeof sendMidiMessage === 'function') sendMidiMessage(176, ccBNum, ccvB);
+                            node.lastCCB = ccvB;
+                        }
+                    }
+                }
+            }
         });
     }
+
+    requestAnimationFrame(updateAudioParams);
 }
 
 /* =========================================================================
@@ -2971,6 +3085,11 @@ window.addEventListener('keydown', (e) => {
         activeKeyboardMap.set(key, note);
         handleMidiMessage({ data: [144, note, 127] }, true);
 
+        // Send MIDI Out
+        if (typeof sendMidiMessage === 'function') {
+            sendMidiMessage(144, note, 100);
+        }
+
         // Visual Feedback
         const el = document.querySelector(`[data-note="${note}"]`);
         if (el) el.classList.add('active');
@@ -2984,6 +3103,11 @@ window.addEventListener('keyup', (e) => {
         activeKeyboardMap.delete(key);
 
         handleMidiMessage({ data: [128, note, 0] }, true);
+
+        // Send MIDI Out
+        if (typeof sendMidiMessage === 'function') {
+            sendMidiMessage(128, note, 0);
+        }
 
         // Visual Feedback
         const el = document.querySelector(`[data-note="${note}"]`);
